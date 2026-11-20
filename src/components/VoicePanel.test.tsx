@@ -1,9 +1,9 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import App from '../App'
 import { createDefaultData } from '../data/defaultBoards'
-import { applyClipChanges } from '../lib/audioClips'
+import { applyClipChanges, getClipsForCell } from '../lib/audioClips'
 import type { ListenOutcome } from '../lib/voice/useListener'
 import type { MatchResult } from '../lib/voice/matcher'
 
@@ -21,12 +21,19 @@ const listener = {
 }
 vi.mock('../lib/voice/useListener', () => ({ useListener: () => listener }))
 vi.mock('../lib/voice/features', () => ({
-  decodeToMono16k: async () => new Float32Array(10),
+  SAMPLE_RATE: 16000,
+  decodeToMono16k: async () => new Float32Array(16000),
   extractFeatures: () => [new Float32Array(24)],
 }))
-vi.mock('../lib/voice/templates', () => ({ loadTemplates: async () => [] }))
+vi.mock('../lib/voice/templates', () => ({
+  loadTemplates: async () => ({ templates: [], spread: 1.8 }),
+}))
 vi.mock('../lib/voice/matcher', () => ({
-  rankCandidates: () => [],
+  rankCandidates: () => [
+    { cellId: 'default-3', distance: 2.1 },
+    { cellId: 'default-4', distance: 2.3 },
+  ],
+  thresholds: () => ({ accept: 3.4, margin: 0.15, suggest: 4.8 }),
   decide: () => decision(),
 }))
 
@@ -46,6 +53,8 @@ async function withRecordingsOn(...cellIds: string[]) {
     [],
   )
 }
+
+afterEach(() => vi.unstubAllGlobals())
 
 beforeEach(() => {
   listenOutcome.mockReset()
@@ -102,6 +111,49 @@ describe('voice matching', () => {
     await user.click(within(dialog).getByRole('button', { name: /like/ }))
     expect(within(messageBar()).getByText('like')).toBeInTheDocument()
     expect(screen.queryByText(/Heard/)).not.toBeInTheDocument()
+
+    // What was said is kept as a learned recording for the chosen button.
+    await waitFor(async () => {
+      const clips = await getClipsForCell('default-4')
+      expect(clips.filter((c) => c.source === 'learned')).toHaveLength(1)
+    })
+    // And shows up in the editor (learned recordings don't count toward the limit).
+    vi.stubGlobal('MediaRecorder', class {})
+    Object.defineProperty(navigator, 'mediaDevices', {
+      configurable: true,
+      value: { getUserMedia: async () => ({}) },
+    })
+    await user.click(screen.getByRole('button', { name: 'Edit' }))
+    const lock = screen.getByRole('dialog', { name: 'Grown-up check' })
+    const [a, b] = within(lock).getByText(/= \?/).textContent!.match(/\d+/g)!.map(Number)
+    await user.click(within(lock).getByRole('button', { name: String(a + b) }))
+    await user.click(screen.getByRole('button', { name: /^Edit like/ }))
+    const editor = screen.getByRole('dialog', { name: 'Edit button' })
+    expect(await within(editor).findByText(/Learned 1/)).toBeInTheDocument()
+    expect(within(editor).getByRole('button', { name: /Record/ })).toBeEnabled()
+  })
+
+  it('does not learn when learning is turned off, and shows scores when asked', async () => {
+    const data = createDefaultData()
+    data.settings.learnFromChoices = false
+    data.settings.showMatchDetails = true
+    localStorage.setItem('aac-app:data', JSON.stringify(data))
+    await withRecordingsOn('default-3', 'default-4')
+    listenOutcome.mockReturnValue(audio)
+    decision.mockReturnValue({
+      kind: 'unsure',
+      candidates: [{ cellId: 'default-4', distance: 2.3 }],
+    })
+    const user = userEvent.setup()
+    render(<App />)
+    await user.click(await screen.findByRole('button', { name: 'Listen' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Say a word' })
+    expect(await within(dialog).findByText('want 2.10 · like 2.30')).toBeInTheDocument()
+    expect(within(dialog).getByText(/Gap 9% \(needs ≥ 15%\).*Auto-select ≤ 3.40.*spread 1.80/)).toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: /like/ }))
+    await new Promise((r) => setTimeout(r, 50))
+    const clips = await getClipsForCell('default-4')
+    expect(clips.filter((c) => c.source === 'learned')).toHaveLength(0)
   })
 
   it('explains when nothing matched or nothing was heard, and can try again', async () => {

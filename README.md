@@ -30,10 +30,13 @@ works fully offline once installed.
   with the buttons' recordings (on every board) and selects the matching
   button, just like tapping it. If it isn't sure it asks "Did you mean…?" with
   the closest buttons. Runs entirely on the device: MFCC speech features with
-  dynamic time warping, matched against the user's own voice, so it adapts to
-  each person's speech. Strictness is adjustable in Settings.
-- **Edit lock** — tapping Edit asks a quick grown-up question (a simple sum)
-  so users can't change boards by accident. It can be turned off in Settings.
+  dynamic time warping, matched against the user's own voice. Thresholds scale
+  with how much the user's own recordings of a word vary, and picks from "Did
+  you mean…?" are saved as extra "learned" recordings (up to 3 per button), so
+  matching adapts to each person. Strictness, learning and a score display for
+  troubleshooting are in Settings.
+- **Edit lock** — tapping Edit asks a quick math question (a simple sum) so
+  users can't change boards by accident. Turn it off in Settings → Edit lock.
 - **Backup** — export/import all boards as a JSON file; everything is saved on
   the device automatically.
 - Large touch targets, keyboard/switch-friendly focus, light and dark themes,
@@ -98,7 +101,6 @@ src/
 ## Roadmap ideas
 
 - Picture-symbol library (e.g. ARASAAC / Mulberry symbols) instead of emoji
-- Learn from "Did you mean…?" choices to improve voice matching over time
 - Word prediction and grammar helpers (plurals, verb tenses)
 - Keyboard page for spelling
 - Switch scanning and dwell selection for motor access

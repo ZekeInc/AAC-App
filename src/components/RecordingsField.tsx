@@ -39,7 +39,43 @@ export function RecordingsField({ clips, loading, onAdd, onRemove }: Props) {
     el.play().catch(stopPlayback)
   }
 
-  const full = clips.length >= MAX_CLIPS_PER_CELL
+  const recorded = clips.filter((c) => c.source !== 'learned')
+  const learned = clips.filter((c) => c.source === 'learned')
+  const full = recorded.length >= MAX_CLIPS_PER_CELL
+
+  const renderList = (list: AudioClip[], name: string) => (
+    <ul className="recording-list">
+      {list.map((clip, i) => {
+        const label = `${name.toLowerCase()} ${i + 1}`
+        return (
+          <li key={clip.id} className="recording">
+            <button
+              type="button"
+              className="btn"
+              onClick={() => (playingId === clip.id ? stopPlayback() : play(clip))}
+              aria-label={`${playingId === clip.id ? 'Stop' : 'Play'} ${label}`}
+            >
+              {playingId === clip.id ? '■ Stop' : '▶ Play'}
+            </button>
+            <span className="recording-name">
+              {name} {i + 1} · {(clip.durationMs / 1000).toFixed(1)} s
+            </span>
+            <button
+              type="button"
+              className="btn danger"
+              onClick={() => {
+                if (playingId === clip.id) stopPlayback()
+                onRemove(clip.id)
+              }}
+              aria-label={`Delete ${label}`}
+            >
+              Delete
+            </button>
+          </li>
+        )
+      })}
+    </ul>
+  )
   const recording = recorder.state === 'recording'
   const secondsLeft = Math.max(0, Math.ceil((MAX_CLIP_MS - recorder.elapsedMs) / 1000))
 
@@ -58,39 +94,11 @@ export function RecordingsField({ clips, loading, onAdd, onRemove }: Props) {
         <>
           {loading ? (
             <p className="hint">Loading recordings…</p>
-          ) : clips.length === 0 ? (
+          ) : recorded.length === 0 ? (
             <p className="hint">No recordings yet.</p>
           ) : (
-            <ul className="recording-list">
-              {clips.map((clip, i) => (
-                <li key={clip.id} className="recording">
-                  <button
-                    type="button"
-                    className="btn"
-                    onClick={() => (playingId === clip.id ? stopPlayback() : play(clip))}
-                    aria-label={`${playingId === clip.id ? 'Stop' : 'Play'} recording ${i + 1}`}
-                  >
-                    {playingId === clip.id ? '■ Stop' : '▶ Play'}
-                  </button>
-                  <span className="recording-name">
-                    Recording {i + 1} · {(clip.durationMs / 1000).toFixed(1)} s
-                  </span>
-                  <button
-                    type="button"
-                    className="btn danger"
-                    onClick={() => {
-                      if (playingId === clip.id) stopPlayback()
-                      onRemove(clip.id)
-                    }}
-                    aria-label={`Delete recording ${i + 1}`}
-                  >
-                    Delete
-                  </button>
-                </li>
-              ))}
-            </ul>
+            renderList(recorded, 'Recording')
           )}
-
           <div className="row">
             <button
               type="button"
@@ -121,6 +129,15 @@ export function RecordingsField({ clips, loading, onAdd, onRemove }: Props) {
             <p className="error" role="alert">
               {recorder.error}
             </p>
+          )}
+          {learned.length > 0 && (
+            <>
+              <span className="subheading">
+                Learned from “Did you mean…?” choices{' '}
+                <small>(added automatically; delete any that are wrong)</small>
+              </span>
+              {renderList(learned, 'Learned')}
+            </>
           )}
         </>
       )}

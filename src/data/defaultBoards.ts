@@ -224,6 +224,8 @@ export const DEFAULT_SETTINGS: Settings = {
   requireEditCheck: true,
   voiceMatching: true,
   matchSensitivity: 0.5,
+  learnFromChoices: true,
+  showMatchDetails: false,
 }
 
 export const DATA_VERSION = 1

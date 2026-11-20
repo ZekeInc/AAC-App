@@ -50,6 +50,10 @@ export interface Settings {
   voiceMatching: boolean
   /** 0 = strict, 1 = lenient. */
   matchSensitivity: number
+  /** Save "Did you mean…?" picks as extra recordings to improve matching. */
+  learnFromChoices: boolean
+  /** Show match scores in the Listen panel, for tuning. */
+  showMatchDetails: boolean
 }
 
 export interface AppData {

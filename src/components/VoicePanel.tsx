@@ -1,25 +1,43 @@
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react'
-import { decodeToMono16k, extractFeatures } from '../lib/voice/features'
-import { decide, rankCandidates, type Candidate } from '../lib/voice/matcher'
+import { SAMPLE_RATE, decodeToMono16k, extractFeatures } from '../lib/voice/features'
+import { decide, rankCandidates, thresholds, type Candidate } from '../lib/voice/matcher'
 import { loadTemplates } from '../lib/voice/templates'
 import { useListener } from '../lib/voice/useListener'
 import type { Cell } from '../types'
 import { CellSymbol } from './CellButton'
 import { Modal } from './Modal'
 
+/** Scores behind a decision, shown when "matching details" is on. */
+interface Details {
+  ranked: Candidate[]
+  accept: number
+  margin: number
+  spread: number | null
+}
+
+export interface Utterance {
+  blob: Blob
+  mimeType: string
+  durationMs: number
+}
+
 type Phase =
   | { kind: 'listening' }
   | { kind: 'thinking' }
-  | { kind: 'unsure'; candidates: Candidate[] }
-  | { kind: 'none' }
+  | { kind: 'unsure'; candidates: Candidate[]; details: Details }
+  | { kind: 'none'; details?: Details }
   | { kind: 'silence' }
   | { kind: 'error'; message: string }
 
 interface Props {
   cellsById: Map<string, Cell>
   sensitivity: number
-  /** Called with the chosen button; `confident` is false when the user picked it. */
-  onSelect: (cell: Cell, confident: boolean) => void
+  showDetails: boolean
+  /**
+   * Called with the chosen button. `confident` is false when the user picked
+   * it from "Did you mean…?"; then `utterance` is what they said, for learning.
+   */
+  onSelect: (cell: Cell, confident: boolean, utterance?: Utterance) => void
   onClose: () => void
 }
 
@@ -28,10 +46,11 @@ interface Props {
  * either selects the matching button or asks the user to choose.
  * Everything happens on this device.
  */
-export function VoicePanel({ cellsById, sensitivity, onSelect, onClose }: Props) {
+export function VoicePanel({ cellsById, sensitivity, showDetails, onSelect, onClose }: Props) {
   const { state: listenState, level, listen, cancel } = useListener()
   const [phase, setPhase] = useState<Phase>({ kind: 'listening' })
   const runId = useRef(0)
+  const utterance = useRef<Utterance | null>(null)
   // Latest props for the async matching flow, without restarting it.
   const latest = useRef({ cellsById, sensitivity, onSelect })
   useEffect(() => {
@@ -49,19 +68,27 @@ export function VoicePanel({ cellsById, sensitivity, onSelect, onClose }: Props)
     setPhase({ kind: 'thinking' })
     const { cellsById: cells, sensitivity: sens, onSelect: select } = latest.current
     try {
-      const [samples, templates] = await Promise.all([
+      const [samples, { templates, spread }] = await Promise.all([
         decodeToMono16k(outcome.blob),
         loadTemplates(new Set(cells.keys())),
       ])
       if (!current()) return
+      utterance.current = {
+        blob: outcome.blob,
+        mimeType: outcome.blob.type || 'audio/webm',
+        durationMs: (samples.length / SAMPLE_RATE) * 1000,
+      }
       const features = extractFeatures(samples)
       if (!features) return setPhase({ kind: 'silence' })
-      const result = decide(rankCandidates(features, templates), sens)
+      const ranked = rankCandidates(features, templates)
+      const result = decide(ranked, sens, spread)
+      const t = thresholds(sens, spread)
+      const details: Details = { ranked: ranked.slice(0, 3), accept: t.accept, margin: t.margin, spread }
       if (result.kind === 'match') {
         const cell = cells.get(result.cellId)
         if (cell) return select(cell, true)
       }
-      setPhase(result.kind === 'unsure' ? result : { kind: 'none' })
+      setPhase(result.kind === 'unsure' ? { ...result, details } : { kind: 'none', details })
     } catch {
       if (current()) setPhase({ kind: 'error', message: 'Something went wrong while matching.' })
     }
@@ -142,7 +169,7 @@ export function VoicePanel({ cellsById, sensitivity, onSelect, onClose }: Props)
                     key={c.cellId}
                     type="button"
                     className={`cell cat-${cell.category}`}
-                    onClick={() => onSelect(cell, false)}
+                    onClick={() => onSelect(cell, false, utterance.current ?? undefined)}
                   >
                     <CellSymbol cell={cell} />
                     <span className="cell-label">{cell.label}</span>
@@ -156,6 +183,7 @@ export function VoicePanel({ cellsById, sensitivity, onSelect, onClose }: Props)
                 None of these
               </button>
             </div>
+            {showDetails && <MatchDetails details={phase.details} cellsById={cellsById} />}
           </>
         )}
 
@@ -174,9 +202,32 @@ export function VoicePanel({ cellsById, sensitivity, onSelect, onClose }: Props)
                 Cancel
               </button>
             </div>
+            {showDetails && phase.kind === 'none' && phase.details && (
+              <MatchDetails details={phase.details} cellsById={cellsById} />
+            )}
           </>
         )}
       </div>
     </Modal>
+  )
+}
+
+/** Raw scores, to help tune matching. Lower distance = closer match. */
+function MatchDetails({ details, cellsById }: { details: Details; cellsById: Map<string, Cell> }) {
+  const [first, second] = details.ranked
+  const gap = first && second ? (second.distance - first.distance) / second.distance : null
+  return (
+    <div className="match-details">
+      <p>
+        {details.ranked
+          .map((c) => `${cellsById.get(c.cellId)?.label ?? '?'} ${c.distance.toFixed(2)}`)
+          .join(' · ') || 'No candidates'}
+      </p>
+      <p>
+        Gap {gap === null ? '–' : `${Math.round(gap * 100)}%`} (needs ≥{' '}
+        {Math.round(details.margin * 100)}%) · Auto-select ≤ {details.accept.toFixed(2)} · Voice
+        spread {details.spread === null ? 'not enough recordings' : details.spread.toFixed(2)}
+      </p>
+    </div>
   )
 }

@@ -65,24 +65,57 @@ export type MatchResult =
   | { kind: 'none' }
 
 /**
- * Thresholds for a sensitivity from 0 (strict: only act on very close,
- * unambiguous matches) to 1 (lenient). Distances are on normalized features,
- * so they are comparable between users and devices. Tuned on test speech.
+ * How much this speaker's own recordings of the same word differ from each
+ * other (median distance between recordings of the same button). People vary
+ * a lot more than the synthetic test voices, so thresholds are scaled by this.
+ * Returns null when there aren't enough recordings to tell.
  */
-export function thresholds(sensitivity: number) {
+export function estimateSpread(templates: Template[]): number | null {
+  const byCell = new Map<string, Features[]>()
+  for (const t of templates) byCell.set(t.cellId, [...(byCell.get(t.cellId) ?? []), t.features])
+  const pairs: number[] = []
+  for (const list of byCell.values()) {
+    for (let i = 0; i < list.length; i++) {
+      for (let j = i + 1; j < list.length; j++) {
+        const d = dtwDistance(list[i], list[j])
+        if (Number.isFinite(d)) pairs.push(d)
+      }
+    }
+  }
+  if (pairs.length < 3) return null
+  pairs.sort((a, b) => a - b)
+  return pairs[Math.floor(pairs.length / 2)]
+}
+
+/** Spread assumed until there are enough recordings to measure it. */
+const DEFAULT_SPREAD = 1.5
+
+/**
+ * Thresholds for a sensitivity from 0 (strict: only act on very close,
+ * unambiguous matches) to 1 (lenient), scaled to the speaker's own
+ * variability. Tuned on test speech; spread ≈ 1 for a very steady speaker.
+ */
+export function thresholds(sensitivity: number, spread: number | null = null) {
   const s = Math.min(1, Math.max(0, sensitivity))
+  const scale = Math.min(2.5, Math.max(1, spread ?? DEFAULT_SPREAD))
+  const accept = (1.6 + 0.6 * s) * scale
   return {
     /** Distance under which a button is confidently matched. */
-    accept: 2.0 + 0.6 * s,
+    accept,
     /** Required relative gap to the runner-up for a confident match. */
-    margin: 0.22 - 0.1 * s,
+    margin: 0.2 - 0.1 * s,
     /** Distance under which a button is offered as a "did you mean" choice. */
-    suggest: 2.6 + 0.4 * s,
+    suggest: accept * 1.4,
   }
 }
 
-export function decide(ranked: Candidate[], sensitivity: number, maxSuggestions = 3): MatchResult {
-  const t = thresholds(sensitivity)
+export function decide(
+  ranked: Candidate[],
+  sensitivity: number,
+  spread: number | null = null,
+  maxSuggestions = 3,
+): MatchResult {
+  const t = thresholds(sensitivity, spread)
   const suggestions = ranked.filter((c) => c.distance <= t.suggest).slice(0, maxSuggestions)
   if (suggestions.length === 0) return { kind: 'none' }
   const [first, second] = ranked

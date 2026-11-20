@@ -57,7 +57,9 @@ export function EditLock({ onUnlock, onClose }: Props) {
             Not quite — try this one.
           </p>
         )}
-        <p className="hint">You can turn this check off in Settings.</p>
+        <p className="hint">
+          You can turn this question off in Settings → Edit lock (open Settings while editing).
+        </p>
       </div>
     </Modal>
   )

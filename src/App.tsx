@@ -13,6 +13,7 @@ import { MessageBar } from './components/MessageBar'
 import { SettingsPanel } from './components/SettingsPanel'
 import { VoicePanel } from './components/VoicePanel'
 import {
+  addLearnedClip,
   countClipsByCell,
   deleteClipsForCell,
   pruneClips,
@@ -247,10 +248,16 @@ export default function App() {
         <VoicePanel
           cellsById={cellsById}
           sensitivity={settings.matchSensitivity}
+          showDetails={settings.showMatchDetails}
           onClose={() => setVoiceOpen(false)}
-          onSelect={(cell, confident) => {
+          onSelect={(cell, confident, utterance) => {
             setVoiceOpen(false)
             if (confident) setHeard(cell.label)
+            if (!confident && utterance && settings.learnFromChoices) {
+              addLearnedClip(cell.id, utterance)
+                .then(refreshClipCounts)
+                .catch(() => {})
+            }
             if (cell.linkTo) {
               dispatch({ type: 'openBoard', boardId: cell.linkTo })
             } else {

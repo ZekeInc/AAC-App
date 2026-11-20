@@ -58,6 +58,19 @@ export function SettingsPanel({ data, onChange, onReplaceData, onClose }: Props)
   return (
     <Modal title="Settings" onClose={onClose}>
       <div className="form">
+        <h3>Edit lock</h3>
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={settings.requireEditCheck}
+            onChange={(e) => onChange({ requireEditCheck: e.target.checked })}
+          />
+          Ask a math question before editing
+        </label>
+        <p className="hint">
+          Turn this off to go straight into editing when Edit is tapped.
+        </p>
+
         <h3>Layout</h3>
         <label>
           Buttons per row: <strong>{settings.columns}</strong>
@@ -86,14 +99,6 @@ export function SettingsPanel({ data, onChange, onReplaceData, onClose }: Props)
           Go back to Home after choosing a word from a folder
         </label>
 
-        <label className="check">
-          <input
-            type="checkbox"
-            checked={settings.requireEditCheck}
-            onChange={(e) => onChange({ requireEditCheck: e.target.checked })}
-          />
-          Ask a grown-up question before editing
-        </label>
 
         <h3>Voice</h3>
         {!speechSupported() && (
@@ -181,6 +186,26 @@ export function SettingsPanel({ data, onChange, onReplaceData, onClose }: Props)
             Stricter asks “Did you mean…?” more often; more lenient picks a button more readily
             but makes more mistakes.
           </small>
+        </label>
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={settings.learnFromChoices}
+            onChange={(e) => onChange({ learnFromChoices: e.target.checked })}
+          />
+          Learn from my “Did you mean…?” choices
+        </label>
+        <p className="hint">
+          When you pick a button there, what you said is saved as an extra recording for it
+          (up to 3 per button), so matching improves with use. They appear in the button editor.
+        </p>
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={settings.showMatchDetails}
+            onChange={(e) => onChange({ showMatchDetails: e.target.checked })}
+          />
+          Show matching details (scores, for troubleshooting)
         </label>
 
         <h3>Backup</h3>

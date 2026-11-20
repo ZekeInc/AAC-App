@@ -13,6 +13,11 @@ export interface AudioClip {
   mimeType: string
   durationMs: number
   createdAt: number
+  /**
+   * 'learned' clips were saved automatically when the user picked this button
+   * from "Did you mean…?". Missing means recorded in the button editor.
+   */
+  source?: 'learned'
 }
 
 /** Serializable form used in backup files. */
@@ -22,11 +27,14 @@ export interface AudioClipBackup {
   mimeType: string
   durationMs: number
   createdAt: number
+  source?: 'learned'
   /** Base64 data URL of the audio. */
   data: string
 }
 
 export const MAX_CLIPS_PER_CELL = 3
+/** Learned clips kept per button; the oldest is replaced when full. */
+export const MAX_LEARNED_PER_CELL = 3
 export const MAX_CLIP_MS = 5000
 
 const DB_NAME = 'aac-app'
@@ -101,6 +109,23 @@ export async function applyClipChanges(add: AudioClip[], removeIds: string[]): P
   await done(tx)
 }
 
+/** Save an utterance the user confirmed as this button, keeping the newest few. */
+export async function addLearnedClip(
+  cellId: string,
+  recording: { blob: Blob; mimeType: string; durationMs: number },
+): Promise<void> {
+  const learned = (await getClipsForCell(cellId)).filter((c) => c.source === 'learned')
+  const excess = learned.slice(0, Math.max(0, learned.length - MAX_LEARNED_PER_CELL + 1))
+  const clip: AudioClip = {
+    ...recording,
+    id: `learned-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+    cellId,
+    createdAt: Date.now(),
+    source: 'learned',
+  }
+  await applyClipChanges([clip], excess.map((c) => c.id))
+}
+
 export async function deleteClipsForCell(cellId: string): Promise<void> {
   const clips = await getClipsForCell(cellId)
   await applyClipChanges([], clips.map((c) => c.id))
@@ -155,6 +180,7 @@ export function clipsFromBackup(value: unknown): AudioClip[] {
     )
     .map(({ data, ...rest }) => ({
       ...rest,
+      source: rest.source === 'learned' ? ('learned' as const) : undefined,
       durationMs: Number(rest.durationMs) || 0,
       createdAt: Number(rest.createdAt) || 0,
       blob: dataUrlToBlob(data, rest.mimeType),

@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { SAMPLE_RATE, extractFeatures, speechBounds } from './features'
-import { decide, dtwDistance, rankCandidates, type Template } from './matcher'
+import {
+  decide,
+  dtwDistance,
+  estimateSpread,
+  rankCandidates,
+  thresholds,
+  type Template,
+} from './matcher'
 
 /**
  * Synthetic "words": a sequence of vowel-like tones (fundamental + formant-ish
@@ -79,7 +86,7 @@ describe('matching', () => {
       for (const opts of [{ stretch: 0.85, gain: 0.1 }, { stretch: 1.2, gain: 0.6 }]) {
         const ranked = rankCandidates(extractFeatures(word(tones, { ...opts, seed: 42 }))!, t)
         expect(ranked[0].cellId).toBe(name)
-        const result = decide(ranked, 0.5)
+        const result = decide(ranked, 0.5, estimateSpread(t))
         expect(result.kind).toBe('match')
       }
     }
@@ -111,8 +118,30 @@ describe('decision', () => {
   })
 
   it('is stricter at low sensitivity', () => {
-    const ranked = [{ cellId: 'a', distance: 2.2 }, { cellId: 'b', distance: 2.9 }]
-    expect(decide(ranked, 1).kind).toBe('match')
-    expect(decide(ranked, 0).kind).toBe('unsure')
+    const ranked = [{ cellId: 'a', distance: 2.0 }, { cellId: 'b', distance: 2.9 }]
+    expect(decide(ranked, 1, 1).kind).toBe('match')
+    expect(decide(ranked, 0, 1).kind).toBe('unsure')
+  })
+
+  it('adapts to how much the speaker varies', () => {
+    // A distance that is too far for a very steady speaker is fine for a variable one.
+    const ranked = [{ cellId: 'a', distance: 3.0 }, { cellId: 'b', distance: 4.5 }]
+    expect(decide(ranked, 0.5, 1).kind).not.toBe('match')
+    expect(decide(ranked, 0.5, 2).kind).toBe('match')
+    // …but scaling is capped, and the gap to the runner-up is always required.
+    expect(thresholds(0.5, 10).accept).toBe(thresholds(0.5, 2.5).accept)
+    expect(decide([{ cellId: 'a', distance: 3 }, { cellId: 'b', distance: 3.1 }], 0.5, 2).kind).toBe(
+      'unsure',
+    )
+  })
+})
+
+describe('speaker spread', () => {
+  it('is measured from recordings of the same word', () => {
+    const steady = templates()
+    const spread = estimateSpread(steady)!
+    expect(spread).toBeGreaterThan(0)
+    // Too few same-word pairs to tell.
+    expect(estimateSpread(steady.filter((_, i) => i % 2 === 0))).toBeNull()
   })
 })

@@ -425,6 +425,11 @@
 }
 
 /* ---------- Voice recordings ---------- */
+.recordings .subheading {
+  margin-top: 6px;
+  font-weight: 600;
+}
+
 .recording-list {
   display: flex;
   flex-direction: column;
@@ -527,6 +532,16 @@
 
 .row.center {
   justify-content: center;
+}
+
+.match-details {
+  font-size: 0.85rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.match-details p {
+  margin: 2px 0;
 }
 
 .toast {
