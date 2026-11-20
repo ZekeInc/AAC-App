@@ -54,9 +54,10 @@ need the production build served over HTTPS.
 ## Live app & installing
 
 The app is deployed to GitHub Pages by `.github/workflows/deploy-pages.yml`
-on every push: **https://zekeinc.github.io/AAC-App/**
+on every push. The address is shown under **Settings → Pages** in the
+repository (and in each deploy run's summary).
 
-To install it, open that link and:
+To install it, open that address and:
 
 - **iPad / iPhone (Safari):** Share button → **Add to Home Screen**.
 - **Android (Chrome):** menu ⋮ → **Install app** (or **Add to Home screen**).
