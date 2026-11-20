@@ -1,5 +1,6 @@
 import { DATA_VERSION, DEFAULT_SETTINGS, createDefaultData } from '../data/defaultBoards'
 import type { AppData } from '../types'
+import { clipsFromBackup, clipsToBackup, type AudioClip } from './audioClips'
 
 const STORAGE_KEY = 'aac-app:data'
 
@@ -45,12 +46,24 @@ export function saveData(data: AppData): void {
   }
 }
 
-export function exportData(data: AppData): Blob {
-  return new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+/** Backup file: boards and settings, plus voice recordings. */
+export async function exportData(data: AppData, clips: AudioClip[]): Promise<Blob> {
+  const backup = { ...data, audioClips: await clipsToBackup(clips) }
+  return new Blob([JSON.stringify(backup)], { type: 'application/json' })
 }
 
-export async function importData(file: File): Promise<AppData> {
-  const data = normalizeData(JSON.parse(await file.text()))
+export interface ImportedBackup {
+  data: AppData
+  /** null when the backup predates voice recordings. */
+  clips: AudioClip[] | null
+}
+
+export async function importData(file: File): Promise<ImportedBackup> {
+  const parsed: unknown = JSON.parse(await file.text())
+  const data = normalizeData(parsed)
   if (!data) throw new Error('That file is not a valid AAC board backup.')
-  return data
+  const raw = (parsed as { audioClips?: unknown }).audioClips
+  // Don't keep the recordings inside the boards data saved to localStorage.
+  delete (data as Partial<{ audioClips: unknown }>).audioClips
+  return { data, clips: raw === undefined ? null : clipsFromBackup(raw) }
 }

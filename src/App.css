@@ -241,6 +241,13 @@
   font-size: 1rem;
 }
 
+.cell-rec-badge {
+  position: absolute;
+  top: 4px;
+  left: 6px;
+  font-size: 0.95rem;
+}
+
 .cell-add {
   border: 2px dashed var(--accent);
   background: transparent;
@@ -415,6 +422,58 @@
   margin: 0;
   color: var(--danger);
   font-weight: 600;
+}
+
+/* ---------- Voice recordings ---------- */
+.recording-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.recording {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+}
+
+.recording-name {
+  flex: 1;
+}
+
+.btn.record {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn.record.is-recording {
+  border-color: var(--danger);
+  background: var(--danger);
+  color: #fff;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.rec-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #fff;
+  animation: rec-pulse 1s ease-in-out infinite;
+}
+
+@keyframes rec-pulse {
+  50% {
+    opacity: 0.3;
+  }
 }
 
 /* ---------- Small screens ---------- */

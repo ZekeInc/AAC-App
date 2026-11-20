@@ -4,10 +4,17 @@ import { CellEditor } from './components/CellEditor'
 import { EditLock } from './components/EditLock'
 import { MessageBar } from './components/MessageBar'
 import { SettingsPanel } from './components/SettingsPanel'
+import {
+  countClipsByCell,
+  deleteClipsForCell,
+  pruneClips,
+  replaceAllClips,
+  type AudioClip,
+} from './lib/audioClips'
 import { loadData, saveData } from './lib/storage'
 import { speak } from './lib/speech'
 import { currentBoard, initState, messageText, reducer } from './state/appState'
-import type { Cell } from './types'
+import type { AppData, Cell } from './types'
 import './App.css'
 
 type EditorTarget = { mode: 'edit'; cell: Cell } | { mode: 'add' } | null
@@ -23,6 +30,30 @@ export default function App() {
   const atHome = boardStack.length <= 1
 
   useEffect(() => saveData(data), [data])
+
+  // How many voice recordings each button has (shown as a badge while editing).
+  const [clipCounts, setClipCounts] = useState<Map<string, number>>(new Map())
+  const refreshClipCounts = useCallback(() => {
+    countClipsByCell()
+      .then(setClipCounts)
+      .catch(() => {
+        // IndexedDB unavailable (e.g. some private browsing modes).
+      })
+  }, [])
+  useEffect(refreshClipCounts, [refreshClipCounts])
+
+  const replaceData = async (next: AppData, clips: AudioClip[] | null) => {
+    dispatch({ type: 'replaceData', data: next })
+    try {
+      if (clips) await replaceAllClips(clips)
+      else {
+        const ids = new Set(Object.values(next.boards).flatMap((b) => b.cells.map((c) => c.id)))
+        await pruneClips(ids)
+      }
+    } finally {
+      refreshClipCounts()
+    }
+  }
 
   const activate = useCallback(
     (cell: Cell) => {
@@ -117,6 +148,7 @@ export default function App() {
             cell={cell}
             showLabel={settings.showLabels}
             editing={editing}
+            recordingCount={clipCounts.get(cell.id) ?? 0}
             onActivate={activate}
           />
         ))}
@@ -145,12 +177,15 @@ export default function App() {
             if (newBoard) dispatch({ type: 'addBoard', board: newBoard })
             dispatch({ type: 'upsertCell', boardId: board.id, cell })
             setEditor(null)
+            refreshClipCounts()
           }}
           onDelete={
             editor.mode === 'edit'
               ? () => {
-                  dispatch({ type: 'deleteCell', boardId: board.id, cellId: editor.cell.id })
+                  const cellId = editor.cell.id
+                  dispatch({ type: 'deleteCell', boardId: board.id, cellId })
                   setEditor(null)
+                  deleteClipsForCell(cellId).catch(() => {}).finally(refreshClipCounts)
                 }
               : undefined
           }
@@ -177,7 +212,7 @@ export default function App() {
         <SettingsPanel
           data={data}
           onChange={(s) => dispatch({ type: 'updateSettings', settings: s })}
-          onReplaceData={(d) => dispatch({ type: 'replaceData', data: d })}
+          onReplaceData={replaceData}
           onClose={() => setSettingsOpen(false)}
         />
       )}

@@ -1,10 +1,13 @@
+import 'fake-indexeddb/auto'
 import '@testing-library/jest-dom/vitest'
 import { afterEach, vi } from 'vitest'
 import { cleanup } from '@testing-library/react'
+import { replaceAllClips } from '../lib/audioClips'
 
-afterEach(() => {
+afterEach(async () => {
   cleanup()
   localStorage.clear()
+  await replaceAllClips([])
 })
 
 // jsdom has no speech synthesis; provide a minimal mock so speech code runs.

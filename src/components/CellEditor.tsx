@@ -1,8 +1,10 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
+import { applyClipChanges, getClipsForCell, type AudioClip } from '../lib/audioClips'
 import { newId } from '../state/appState'
 import type { Board, Cell, WordCategory } from '../types'
 import { CellSymbol } from './CellButton'
 import { Modal } from './Modal'
+import { RecordingsField } from './RecordingsField'
 
 const CATEGORY_LABELS: Record<WordCategory, string> = {
   pronoun: 'People / pronouns (yellow)',
@@ -56,6 +58,29 @@ export function CellEditor({
   const [category, setCategory] = useState<WordCategory>(cell?.category ?? 'noun')
   const [linkTo, setLinkTo] = useState(cell?.linkTo ?? '')
   const [error, setError] = useState<string | null>(null)
+  // A new button needs its id up front so recordings can be attached to it.
+  const [cellId] = useState(() => cell?.id ?? newId('cell'))
+
+  // Recordings are staged here and only written when the button is saved.
+  const [savedClips, setSavedClips] = useState<AudioClip[]>([])
+  const [clipsLoading, setClipsLoading] = useState(!!cell)
+  const [addedClips, setAddedClips] = useState<AudioClip[]>([])
+  const [removedClipIds, setRemovedClipIds] = useState<string[]>([])
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    if (!cell) return
+    let cancelled = false
+    getClipsForCell(cell.id)
+      .then((clips) => !cancelled && setSavedClips(clips))
+      .catch(() => !cancelled && setError('Could not load voice recordings.'))
+      .finally(() => !cancelled && setClipsLoading(false))
+    return () => {
+      cancelled = true
+    }
+  }, [cell])
+
+  const clips = [...savedClips, ...addedClips].filter((c) => !removedClipIds.includes(c.id))
 
   const otherBoards = Object.values(boards).filter((b) => b.id !== currentBoardId)
 
@@ -68,8 +93,9 @@ export function CellEditor({
     }
   }
 
-  const submit = (e: FormEvent) => {
+  const submit = async (e: FormEvent) => {
     e.preventDefault()
+    if (saving) return
     const trimmed = label.trim()
     if (!trimmed) {
       setError('Please enter a label.')
@@ -81,9 +107,20 @@ export function CellEditor({
       newBoard = { id: newId('board'), name: trimmed, cells: [] }
       target = newBoard.id
     }
+    setSaving(true)
+    try {
+      await applyClipChanges(
+        addedClips.filter((c) => !removedClipIds.includes(c.id)),
+        removedClipIds.filter((id) => savedClips.some((c) => c.id === id)),
+      )
+    } catch {
+      setSaving(false)
+      setError('Could not save the voice recordings. The device may be out of storage.')
+      return
+    }
     onSave(
       {
-        id: cell?.id ?? newId('cell'),
+        id: cellId,
         label: trimmed,
         vocalization: vocalization.trim() || undefined,
         symbol: symbol.trim() || undefined,
@@ -134,7 +171,7 @@ export function CellEditor({
           <button type="button" className="btn" onClick={onClose}>
             Cancel
           </button>
-          <button type="submit" form="cell-editor" className="btn primary">
+          <button type="submit" form="cell-editor" className="btn primary" disabled={saving}>
             Save
           </button>
         </>
@@ -174,6 +211,17 @@ export function CellEditor({
             )}
           </div>
         </div>
+        <RecordingsField
+          clips={clips}
+          loading={clipsLoading}
+          onAdd={(r) =>
+            setAddedClips((list) => [
+              ...list,
+              { ...r, id: newId('clip'), cellId, createdAt: Date.now() },
+            ])
+          }
+          onRemove={(id) => setRemovedClipIds((ids) => [...ids, id])}
+        />
         <label>
           Tapping this button
           <select value={linkTo} onChange={(e) => setLinkTo(e.target.value)}>

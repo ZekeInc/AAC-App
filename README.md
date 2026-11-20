@@ -22,6 +22,10 @@ works fully offline once installed.
   purple, negation red).
 - **Customizable boards** — add, edit, reorder, and delete buttons; use an
   emoji or your own photo; link a button to another board or create a new one.
+- **Voice recordings** — record up to 3 short clips (5 s each) of the user
+  saying a button's word, in the button editor. They are stored only on the
+  device (IndexedDB), included in backups, and are for upcoming voice matching:
+  they are never played by Speak or by tapping a button.
 - **Edit lock** — tapping Edit asks a quick grown-up question (a simple sum)
   so users can't change boards by accident. It can be turned off in Settings.
 - **Backup** — export/import all boards as a JSON file; everything is saved on
@@ -77,12 +81,15 @@ src/
   state/appState.ts       reducer: message, navigation, board editing, settings
   lib/speech.ts           Web Speech API wrapper
   lib/storage.ts          localStorage persistence, import/export
+  lib/audioClips.ts       voice recordings in IndexedDB, backup encoding
+  lib/useRecorder.ts      microphone recording (MediaRecorder)
   types.ts                Board / Cell / Settings types
 ```
 
 ## Roadmap ideas
 
 - Picture-symbol library (e.g. ARASAAC / Mulberry symbols) instead of emoji
+- Voice matching: say a word and select the button whose recordings match
 - Word prediction and grammar helpers (plurals, verb tenses)
 - Keyboard page for spelling
 - Switch scanning and dwell selection for motor access

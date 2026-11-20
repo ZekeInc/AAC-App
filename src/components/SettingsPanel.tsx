@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { createDefaultData } from '../data/defaultBoards'
+import { getAllClips, type AudioClip } from '../lib/audioClips'
 import { exportData, importData } from '../lib/storage'
 import { speak, speechSupported, useVoices } from '../lib/speech'
 import type { AppData, Settings } from '../types'
@@ -8,7 +9,8 @@ import { Modal } from './Modal'
 interface Props {
   data: AppData
   onChange: (settings: Partial<Settings>) => void
-  onReplaceData: (data: AppData) => void
+  /** clips: recordings to restore, [] to delete all, null to keep existing ones. */
+  onReplaceData: (data: AppData, clips: AudioClip[] | null) => void
   onClose: () => void
 }
 
@@ -18,8 +20,15 @@ export function SettingsPanel({ data, onChange, onReplaceData, onClose }: Props)
   const fileInput = useRef<HTMLInputElement>(null)
   const [status, setStatus] = useState<string | null>(null)
 
-  const download = () => {
-    const url = URL.createObjectURL(exportData(data))
+  const download = async () => {
+    let blob: Blob
+    try {
+      blob = await exportData(data, await getAllClips())
+    } catch {
+      setStatus('Export failed.')
+      return
+    }
+    const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
     a.download = `aac-boards-${new Date().toISOString().slice(0, 10)}.json`
@@ -30,7 +39,8 @@ export function SettingsPanel({ data, onChange, onReplaceData, onClose }: Props)
   const upload = async (file: File | undefined) => {
     if (!file) return
     try {
-      onReplaceData(await importData(file))
+      const backup = await importData(file)
+      onReplaceData(backup.data, backup.clips)
       setStatus('Boards imported.')
     } catch (e) {
       setStatus(e instanceof Error ? e.message : 'Import failed.')
@@ -137,7 +147,7 @@ export function SettingsPanel({ data, onChange, onReplaceData, onClose }: Props)
 
         <h3>Backup</h3>
         <p className="hint">
-          Boards are saved on this device. Export a backup to move them to another device.
+          Boards and voice recordings are saved only on this device. Export a backup to move them to another device.
         </p>
         <div className="row">
           <button type="button" className="btn" onClick={download}>
@@ -157,8 +167,8 @@ export function SettingsPanel({ data, onChange, onReplaceData, onClose }: Props)
             type="button"
             className="btn danger"
             onClick={() => {
-              if (confirm('Reset all boards and settings to the defaults? Your changes will be lost.')) {
-                onReplaceData(createDefaultData())
+              if (confirm('Reset all boards, settings and voice recordings to the defaults? Your changes will be lost.')) {
+                onReplaceData(createDefaultData(), [])
                 setStatus('Reset to defaults.')
               }
             }}
