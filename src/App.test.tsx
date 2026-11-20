@@ -23,6 +23,10 @@ describe('App', () => {
     const utterance = speak.mock.calls[0][0] as SpeechSynthesisUtterance
     expect(utterance.text).toBe('I want pizza')
 
+    await user.click(screen.getByRole('button', { name: 'Copy message as text' }))
+    expect(await navigator.clipboard.readText()).toBe('I want pizza')
+    expect(screen.getByRole('status')).toHaveTextContent('Message copied')
+
     await user.click(screen.getByRole('button', { name: 'Delete last word' }))
     expect(within(messageBar()).queryByText('pizza')).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'Clear message' }))

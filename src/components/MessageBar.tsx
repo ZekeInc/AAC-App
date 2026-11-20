@@ -1,4 +1,6 @@
-import type { MessageWord } from '../state/appState'
+import { useEffect, useState } from 'react'
+import { copyText } from '../lib/clipboard'
+import { messageText, type MessageWord } from '../state/appState'
 import { CellSymbol } from './CellButton'
 
 interface Props {
@@ -8,8 +10,28 @@ interface Props {
   onClear: () => void
 }
 
+type CopyStatus = 'copied' | 'failed' | null
+
 export function MessageBar({ message, onSpeak, onBackspace, onClear }: Props) {
   const empty = message.length === 0
+  // Feedback belongs to the message it was for, so it disappears as soon as
+  // the message changes, and otherwise after a couple of seconds.
+  const [copied, setCopied] = useState<{ status: CopyStatus; for: MessageWord[] }>({
+    status: null,
+    for: message,
+  })
+  const copyStatus = copied.for === message ? copied.status : null
+
+  useEffect(() => {
+    if (!copied.status) return
+    const t = window.setTimeout(() => setCopied((c) => ({ ...c, status: null })), 2000)
+    return () => window.clearTimeout(t)
+  }, [copied])
+
+  const copy = async () => {
+    const ok = await copyText(messageText(message))
+    setCopied({ status: ok ? 'copied' : 'failed', for: message })
+  }
   return (
     <section className="message-bar" aria-label="Message">
       <button
@@ -34,6 +56,32 @@ export function MessageBar({ message, onSpeak, onBackspace, onClear }: Props) {
         <button type="button" className="action speak" onClick={onSpeak} disabled={empty}>
           <span aria-hidden="true">🔊</span> Speak
         </button>
+        <button
+          type="button"
+          className={`action copy${copyStatus ? ` is-${copyStatus}` : ''}`}
+          onClick={copy}
+          disabled={empty}
+          aria-label="Copy message as text"
+        >
+          {copyStatus === 'copied' ? (
+            <>
+              <span aria-hidden="true">✓</span> Copied
+            </>
+          ) : copyStatus === 'failed' ? (
+            'Copy failed'
+          ) : (
+            <>
+              <span aria-hidden="true">📋</span> Copy
+            </>
+          )}
+        </button>
+        <span className="visually-hidden" role="status">
+          {copyStatus === 'copied'
+            ? 'Message copied'
+            : copyStatus === 'failed'
+              ? 'Could not copy the message'
+              : ''}
+        </span>
         <button
           type="button"
           className="action"

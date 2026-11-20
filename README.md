@@ -13,7 +13,8 @@ works fully offline once installed.
   plus topic folders: Feelings, Food, People, Places, Activities, Body, Chat,
   Questions.
 - **Message bar** — tap words to build a sentence, then tap the bar or
-  **Speak** to say it. Backspace and clear buttons.
+  **Speak** to say it. **Copy** puts the sentence on the clipboard as text to
+  paste into a text message, email or chat. Backspace and clear buttons.
 - **Text-to-speech** using the device's built-in voices, with voice, speed and
   pitch settings and optional speak-on-tap.
 - **Fitzgerald Key colors** so word types are easy to find (people yellow,

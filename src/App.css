@@ -82,6 +82,23 @@
   font-weight: 700;
 }
 
+.action.copy {
+  min-width: 104px;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.action.copy.is-copied {
+  border-color: #15803d;
+  color: #15803d;
+}
+
+.action.copy.is-failed {
+  border-color: var(--danger);
+  color: var(--danger);
+  font-size: 0.9rem;
+}
+
 .action:disabled {
   opacity: 0.45;
   cursor: default;
@@ -426,8 +443,15 @@
 
   .action {
     flex: 1;
+    min-width: 0;
     min-height: 44px;
     font-size: 1.3rem;
+  }
+
+  .action.speak,
+  .action.copy {
+    flex: 2;
+    min-width: 0;
   }
 
   .nav-btn {
