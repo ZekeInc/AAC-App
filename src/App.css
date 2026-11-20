@@ -534,6 +534,60 @@
   justify-content: center;
 }
 
+.sentence-slots {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  text-align: left;
+}
+
+.sentence-slot {
+  padding: 10px;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+}
+
+.sentence-slot.is-unclear {
+  border-color: #d97706;
+}
+
+.slot-heading {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 700;
+}
+
+.slot-options {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.slot-cell {
+  width: 104px;
+  min-height: 88px;
+  opacity: 0.55;
+}
+
+.slot-cell.is-chosen {
+  opacity: 1;
+  outline: 4px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.slot-skip {
+  min-height: 88px;
+}
+
+.slot-skip.is-chosen {
+  border-color: var(--text);
+}
+
 .match-details {
   font-size: 0.85rem;
   color: var(--muted);

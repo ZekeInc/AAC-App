@@ -226,6 +226,7 @@ export const DEFAULT_SETTINGS: Settings = {
   matchSensitivity: 0.5,
   learnFromChoices: true,
   showMatchDetails: false,
+  multiWord: true,
 }
 
 export const DATA_VERSION = 1

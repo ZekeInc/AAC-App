@@ -171,6 +171,14 @@ export function SettingsPanel({ data, onChange, onReplaceData, onClose }: Props)
           />
           Show the Listen button
         </label>
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={settings.multiWord}
+            onChange={(e) => onChange({ multiWord: e.target.checked })}
+          />
+          Listen for several words at once (e.g. “banana bread”)
+        </label>
         <label>
           Matching: <strong>{sensitivityLabel(settings.matchSensitivity)}</strong>
           <input

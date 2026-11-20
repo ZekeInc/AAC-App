@@ -35,6 +35,11 @@ works fully offline once installed.
   you mean…?" are saved as extra "learned" recordings (up to 3 per button), so
   matching adapts to each person. Strictness, learning and a score display for
   troubleshooting are in Settings.
+- **Sentences by voice** — say several words in a row ("banana bread", "I want
+  juice"), with or without pauses. Connected-word recognition (one-pass DTW)
+  finds the words and where they start and end; each is then checked like a
+  single word. If every word is clear they are all added and spoken; otherwise
+  a review screen lets you pick or skip the unclear ones (picks are learned).
 - **Edit lock** — tapping Edit asks a quick math question (a simple sum) so
   users can't change boards by accident. Turn it off in Settings → Edit lock.
 - **Backup** — export/import all boards as a JSON file; everything is saved on
@@ -94,7 +99,7 @@ src/
   lib/useRecorder.ts      microphone recording (MediaRecorder)
   lib/voice/              voice matching: features (MFCC), matcher (DTW +
                           decision thresholds), listener (end-of-speech
-                          detection), feature cache for saved recordings
+                          detection), sentence decoding, feature cache
   types.ts                Board / Cell / Settings types
 ```
 

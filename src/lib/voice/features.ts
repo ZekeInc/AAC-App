@@ -8,8 +8,8 @@
  */
 
 export const SAMPLE_RATE = 16000
-const FRAME = 400 // 25 ms
-const HOP = 160 // 10 ms
+export const FRAME = 400 // 25 ms
+export const HOP = 160 // 10 ms
 const NFFT = 512
 const MEL_BANDS = 26
 const CEPS = 13 // c0..c12; c0 (overall loudness) is dropped from the features
@@ -226,6 +226,25 @@ function cmvn(frames: Float32Array[]): Float32Array[] {
   return frames.map((f) => f.map((v, k) => (v - mean[k]) / sd[k]))
 }
 
+/** c1..c12 plus their deltas for frames [start, end), not normalized. */
+export function rawFrames(ceps: Float32Array[], start: number, end: number): Float32Array[] {
+  const speech = ceps.slice(start, end).map((c) => c.subarray(1)) // drop c0 (loudness)
+  if (speech.length === 0) return []
+  const d = deltas(speech)
+  return speech.map((c, t) => {
+    const v = new Float32Array(c.length * 2)
+    v.set(c)
+    v.set(d[t], c.length)
+    return v
+  })
+}
+
+/** Features for one word spanning frames [start, end), normalized over the word. */
+export function wordFeatures(ceps: Float32Array[], start: number, end: number): Features | null {
+  const frames = rawFrames(ceps, start, end)
+  return frames.length >= MIN_SPEECH_FRAMES ? cmvn(frames) : null
+}
+
 /**
  * Features for matching from 16 kHz mono samples, or null when the audio
  * contains no detectable speech.
@@ -233,16 +252,33 @@ function cmvn(frames: Float32Array[]): Float32Array[] {
 export function extractFeatures(samples: Float32Array): Features | null {
   const { ceps, energyDb } = mfcc(samples)
   const bounds = speechBounds(energyDb)
-  if (!bounds) return null
-  const speech = ceps.slice(bounds[0], bounds[1]).map((c) => c.subarray(1)) // drop c0
-  const d = deltas(speech)
-  const combined = speech.map((c, t) => {
-    const v = new Float32Array(c.length * 2)
-    v.set(c)
-    v.set(d[t], c.length)
-    return v
-  })
-  return cmvn(combined)
+  return bounds ? wordFeatures(ceps, bounds[0], bounds[1]) : null
+}
+
+/**
+ * Like speechBounds, but for a sentence: from the first to the last
+ * substantial stretch of sound, however long the pauses between words.
+ * Short isolated noises (clicks, bumps) at either end are still left out.
+ */
+export function utteranceBounds(energyDb: number[]): [number, number] | null {
+  const main = speechBounds(energyDb)
+  if (!main) return null
+  const sorted = [...energyDb].sort((a, b) => a - b)
+  const noise = sorted[Math.floor(sorted.length * 0.1)]
+  const peak = sorted[sorted.length - 1]
+  const threshold = Math.max(noise + 0.35 * (peak - noise), peak - 35)
+  let start = main[0]
+  let end = main[1]
+  // Extend over any other part that is at least as long as a short word.
+  let run = 0
+  for (let i = 0; i < energyDb.length; i++) {
+    run = energyDb[i] >= threshold ? run + 1 : 0
+    if (run >= 2 * MIN_PART) {
+      start = Math.min(start, Math.max(0, i - run + 1 - 5))
+      end = Math.max(end, Math.min(energyDb.length, i + 7))
+    }
+  }
+  return [start, end]
 }
 
 /** Decode recorded audio (any format the browser supports) to 16 kHz mono. */
@@ -262,4 +298,26 @@ export async function decodeToMono16k(blob: Blob): Promise<Float32Array> {
   src.connect(offline.destination)
   src.start()
   return (await offline.startRendering()).getChannelData(0)
+}
+
+/** Encode 16 kHz mono samples as a 16-bit WAV file (for saving learned words). */
+export function encodeWav(samples: Float32Array): Blob {
+  const buf = new ArrayBuffer(44 + samples.length * 2)
+  const v = new DataView(buf)
+  const str = (o: number, s: string) => [...s].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)))
+  str(0, 'RIFF')
+  v.setUint32(4, 36 + samples.length * 2, true)
+  str(8, 'WAVE')
+  str(12, 'fmt ')
+  v.setUint32(16, 16, true)
+  v.setUint16(20, 1, true) // PCM
+  v.setUint16(22, 1, true) // mono
+  v.setUint32(24, SAMPLE_RATE, true)
+  v.setUint32(28, SAMPLE_RATE * 2, true)
+  v.setUint16(32, 2, true)
+  v.setUint16(34, 16, true)
+  str(36, 'data')
+  v.setUint32(40, samples.length * 2, true)
+  samples.forEach((x, i) => v.setInt16(44 + i * 2, Math.max(-1, Math.min(1, x)) * 0x7fff, true))
+  return new Blob([buf], { type: 'audio/wav' })
 }

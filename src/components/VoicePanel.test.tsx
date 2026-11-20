@@ -6,6 +6,7 @@ import { createDefaultData } from '../data/defaultBoards'
 import { applyClipChanges, getClipsForCell } from '../lib/audioClips'
 import type { ListenOutcome } from '../lib/voice/useListener'
 import type { MatchResult } from '../lib/voice/matcher'
+import type { Recognition } from '../lib/voice/sentence'
 
 // The microphone, audio decoding and matching are stubbed; the matching
 // algorithm itself is covered in lib/voice/matcher.test.ts.
@@ -23,18 +24,21 @@ vi.mock('../lib/voice/useListener', () => ({ useListener: () => listener }))
 vi.mock('../lib/voice/features', () => ({
   SAMPLE_RATE: 16000,
   decodeToMono16k: async () => new Float32Array(16000),
-  extractFeatures: () => [new Float32Array(24)],
+  encodeWav: () => new Blob(['wav'], { type: 'audio/wav' }),
 }))
 vi.mock('../lib/voice/templates', () => ({
-  loadTemplates: async () => ({ templates: [], spread: 1.8 }),
+  loadTemplates: async () => ({ templates: [], raw: [], spread: 1.8 }),
 }))
 vi.mock('../lib/voice/matcher', () => ({
-  rankCandidates: () => [
-    { cellId: 'default-3', distance: 2.1 },
-    { cellId: 'default-4', distance: 2.3 },
-  ],
   thresholds: () => ({ accept: 3.4, margin: 0.15, suggest: 4.8 }),
-  decide: () => decision(),
+}))
+const ranked = [
+  { cellId: 'default-3', distance: 2.1 },
+  { cellId: 'default-4', distance: 2.3 },
+]
+const sentence = vi.fn<() => Recognition | null>()
+vi.mock('../lib/voice/sentence', () => ({
+  recognize: () => sentence() ?? { kind: 'single', result: decision(), ranked },
 }))
 
 const messageBar = () => screen.getByRole('region', { name: 'Message' })
@@ -59,6 +63,8 @@ afterEach(() => vi.unstubAllGlobals())
 beforeEach(() => {
   listenOutcome.mockReset()
   decision.mockReset()
+  sentence.mockReset()
+  sentence.mockReturnValue(null)
 })
 
 describe('voice matching', () => {
@@ -181,5 +187,79 @@ describe('voice matching', () => {
     render(<App />)
     await user.click(await screen.findByRole('button', { name: 'Listen' }))
     expect(await screen.findByRole('alert')).toHaveTextContent('Microphone access was blocked.')
+  })
+
+  describe('sentences', () => {
+    // default-3 want, default-4 like, default-5 go, default-7 more
+    const word = (result: MatchResult, i: number) => ({
+      sampleStart: i * 8000,
+      sampleEnd: i * 8000 + 6000,
+      result,
+      ranked: [],
+    })
+
+    it('adds every word of a confidently recognized sentence and speaks it once', async () => {
+      await withRecordingsOn('default-3', 'default-7')
+      listenOutcome.mockReturnValue(audio)
+      sentence.mockReturnValue({
+        kind: 'sentence',
+        words: [
+          word({ kind: 'match', cellId: 'default-3', candidates: [] }, 0),
+          word({ kind: 'match', cellId: 'default-7', candidates: [] }, 1),
+        ],
+      })
+      const user = userEvent.setup()
+      render(<App />)
+      vi.mocked(window.speechSynthesis.speak).mockClear()
+      await user.click(await screen.findByRole('button', { name: 'Listen' }))
+      expect(await screen.findByText('Heard “want more”')).toBeInTheDocument()
+      const words = within(messageBar()).getAllByText(/^(want|more)$/).map((el) => el.textContent)
+      expect(words).toEqual(['want', 'more'])
+      const spoken = vi.mocked(window.speechSynthesis.speak).mock.calls.map((c) => c[0].text)
+      expect(spoken).toEqual(['want more'])
+    })
+
+    it('lets the user pick unclear words, skip others, and learns the picks', async () => {
+      await withRecordingsOn('default-3', 'default-4', 'default-5')
+      listenOutcome.mockReturnValue(audio)
+      sentence.mockReturnValue({
+        kind: 'sentence',
+        words: [
+          word({ kind: 'match', cellId: 'default-3', candidates: [] }, 0),
+          word(
+            {
+              kind: 'unsure',
+              candidates: [
+                { cellId: 'default-4', distance: 2 },
+                { cellId: 'default-5', distance: 2.1 },
+              ],
+            },
+            1,
+          ),
+          word({ kind: 'unsure', candidates: [{ cellId: 'default-5', distance: 2 }] }, 2),
+        ],
+      })
+      const user = userEvent.setup()
+      render(<App />)
+      await user.click(await screen.findByRole('button', { name: 'Listen' }))
+      const dialog = await screen.findByRole('dialog', { name: 'Say a word' })
+      await within(dialog).findByText(/I heard 3 words/)
+      const slots = within(dialog).getAllByRole('listitem')
+      // Word 1 is preselected; unclear words start unselected.
+      expect(within(slots[0]).getByRole('button', { name: /want/ })).toHaveAttribute('aria-pressed', 'true')
+      expect(within(dialog).getByRole('button', { name: 'Add 1 word' })).toBeEnabled()
+      await user.click(within(slots[1]).getByRole('button', { name: /like/ }))
+      await user.click(within(dialog).getByRole('button', { name: 'Add 2 words' }))
+
+      const words = within(messageBar()).getAllByText(/^(want|like|go)$/).map((el) => el.textContent)
+      expect(words).toEqual(['want', 'like'])
+      expect(screen.queryByText(/Heard/)).not.toBeInTheDocument()
+      // Only the word the user had to pick is learned.
+      await waitFor(async () => {
+        const clips = await getClipsForCell('default-4')
+        expect(clips.filter((c) => c.source === 'learned')).toHaveLength(1)
+      })
+      expect((await getClipsForCell('default-3')).filter((c) => c.source === 'learned')).toHaveLength(0)
+    })
   })
 })

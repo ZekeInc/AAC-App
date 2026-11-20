@@ -54,6 +54,8 @@ export interface Settings {
   learnFromChoices: boolean
   /** Show match scores in the Listen panel, for tuning. */
   showMatchDetails: boolean
+  /** Recognize several words said in a row ("banana bread"). */
+  multiWord: boolean
 }
 
 export interface AppData {

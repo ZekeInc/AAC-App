@@ -8,7 +8,6 @@ export type ListenOutcome =
   | { kind: 'cancelled' }
   | { kind: 'error'; message: string }
 
-const MAX_SPEECH_MS = 5000 // longest utterance
 const MAX_WAIT_MS = 6000 // give up if nothing is said
 const END_SILENCE_MS = 800 // this much quiet after speech ends the utterance
 const MIN_SPEECH_MS = 150
@@ -30,7 +29,7 @@ function errorMessage(err: unknown): string {
  * heard. Loudness is compared with the room's own background level, so it
  * works in quiet and noisier places.
  */
-export function useListener() {
+export function useListener(maxSpeechMs = 5000) {
   const [state, setState] = useState<ListenerState>('idle')
   /** 0–1 input level, for a simple meter. */
   const [level, setLevel] = useState(0)
@@ -131,7 +130,7 @@ export function useListener() {
 
               if (
                 (speaking && now - lastLoud > END_SILENCE_MS) ||
-                (speechStart && now - speechStart > MAX_SPEECH_MS)
+                (speechStart && now - speechStart > maxSpeechMs)
               ) {
                 window.clearInterval(interval)
                 rec.stop() // → onstop → finish with audio
@@ -142,7 +141,7 @@ export function useListener() {
           })
           .catch((err) => finish({ kind: 'error', message: errorMessage(err) }))
       }),
-    [],
+    [maxSpeechMs],
   )
 
   return { state, level, listen, cancel }

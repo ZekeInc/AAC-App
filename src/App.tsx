@@ -71,6 +71,13 @@ export default function App() {
     return () => window.clearTimeout(t)
   }, [heard])
 
+  const learn = (cell: Cell, utterance: { blob: Blob; mimeType: string; durationMs: number }) => {
+    if (!settings.learnFromChoices) return
+    addLearnedClip(cell.id, utterance)
+      .then(refreshClipCounts)
+      .catch(() => {})
+  }
+
   const canListen = settings.voiceMatching && !editing && clipCounts.size > 0
 
   const replaceData = async (next: AppData, clips: AudioClip[] | null) => {
@@ -249,15 +256,21 @@ export default function App() {
           cellsById={cellsById}
           sensitivity={settings.matchSensitivity}
           showDetails={settings.showMatchDetails}
+          multiWord={settings.multiWord}
           onClose={() => setVoiceOpen(false)}
+          onLearn={learn}
+          onSelectWords={(cells, confident) => {
+            setVoiceOpen(false)
+            if (cells.length === 0) return
+            const text = cells.map((c) => c.label).join(' ')
+            if (confident) setHeard(text)
+            if (settings.speakOnTap) speak(cells.map((c) => c.vocalization ?? c.label).join(' '), settings)
+            for (const cell of cells) dispatch({ type: 'selectWord', cell })
+          }}
           onSelect={(cell, confident, utterance) => {
             setVoiceOpen(false)
             if (confident) setHeard(cell.label)
-            if (!confident && utterance && settings.learnFromChoices) {
-              addLearnedClip(cell.id, utterance)
-                .then(refreshClipCounts)
-                .catch(() => {})
-            }
+            if (!confident && utterance) learn(cell, utterance)
             if (cell.linkTo) {
               dispatch({ type: 'openBoard', boardId: cell.linkTo })
             } else {
