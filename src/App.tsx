@@ -127,7 +127,8 @@ export default function App() {
           onClick={() => dispatch({ type: 'back' })}
           disabled={atHome}
         >
-          <span aria-hidden="true">◀</span> Back
+          <span aria-hidden="true">◀</span>
+          <span className="nav-label">Back</span>
         </button>
         <button
           type="button"
@@ -135,18 +136,21 @@ export default function App() {
           onClick={() => dispatch({ type: 'home' })}
           disabled={atHome}
         >
-          <span aria-hidden="true">🏠</span> Home
+          <span aria-hidden="true">🏠</span>
+          <span className="nav-label">Home</span>
         </button>
         <h1 className="board-title">{board.name}</h1>
         {canListen && (
           <button type="button" className="nav-btn listen" onClick={() => setVoiceOpen(true)}>
-            <span aria-hidden="true">🎤</span> Listen
+            <span aria-hidden="true">🎤</span>
+            <span className="nav-label">Listen</span>
           </button>
         )}
         {editing ? (
           <>
             <button type="button" className="nav-btn" onClick={() => setSettingsOpen(true)}>
-              <span aria-hidden="true">⚙️</span> Settings
+              <span aria-hidden="true">⚙️</span>
+              <span className="nav-label">Settings</span>
             </button>
             <button
               type="button"
@@ -164,7 +168,8 @@ export default function App() {
               settings.requireEditCheck ? setLockOpen(true) : startEditing()
             }
           >
-            <span aria-hidden="true">✎</span> Edit
+            <span aria-hidden="true">✎</span>
+            <span className="nav-label">Edit</span>
           </button>
         )}
       </nav>
