@@ -21,8 +21,8 @@ works fully offline once installed.
   purple, negation red).
 - **Customizable boards** — add, edit, reorder, and delete buttons; use an
   emoji or your own photo; link a button to another board or create a new one.
-- **Edit lock** — the Edit button must be pressed and held for one second, so
-  users can't change boards by accident.
+- **Edit lock** — tapping Edit asks a quick grown-up question (a simple sum)
+  so users can't change boards by accident. It can be turned off in Settings.
 - **Backup** — export/import all boards as a JSON file; everything is saved on
   the device automatically.
 - Large touch targets, keyboard/switch-friendly focus, light and dark themes,

@@ -126,24 +126,20 @@
   color: var(--accent-text);
 }
 
-.nav-btn.hold {
-  position: relative;
-  overflow: hidden;
+.lock-question {
+  margin: 0;
+  font-size: 1.15rem;
 }
 
-.nav-btn.hold::after {
-  content: '';
-  position: absolute;
-  inset: auto 0 0 0;
-  height: 4px;
-  background: var(--accent);
-  transform: scaleX(0);
-  transform-origin: left;
+.lock-choices {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
 }
 
-.nav-btn.hold.is-holding::after {
-  transform: scaleX(1);
-  transition: transform var(--hold-ms) linear;
+.lock-choice {
+  min-height: 64px;
+  font-size: 1.5rem;
 }
 
 .edit-banner {
@@ -182,6 +178,7 @@
   cursor: pointer;
   transition: transform 80ms ease;
   box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
+  container-type: inline-size;
 }
 
 .cell:active {
@@ -201,10 +198,12 @@
 }
 
 .cell-label {
-  font-size: clamp(0.85rem, 2vmin, 1.2rem);
+  /* Shrink with the button so whole words fit instead of breaking mid-word. */
+  font-size: clamp(0.75rem, 16cqi, 1.35rem);
   font-weight: 700;
   text-align: center;
-  overflow-wrap: anywhere;
+  overflow-wrap: break-word;
+  max-width: 100%;
 }
 
 .cell.is-folder {

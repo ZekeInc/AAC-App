@@ -68,6 +68,15 @@ export function SettingsPanel({ data, onChange, onReplaceData, onClose }: Props)
           Go back to Home after choosing a word from a folder
         </label>
 
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={settings.requireEditCheck}
+            onChange={(e) => onChange({ requireEditCheck: e.target.checked })}
+          />
+          Ask a grown-up question before editing
+        </label>
+
         <h3>Voice</h3>
         {!speechSupported() && (
           <p className="error">This browser does not support text-to-speech.</p>

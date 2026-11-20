@@ -44,6 +44,8 @@ export interface Settings {
   rate: number
   pitch: number
   showLabels: boolean
+  /** Ask a simple grown-up question before entering edit mode. */
+  requireEditCheck: boolean
 }
 
 export interface AppData {

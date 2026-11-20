@@ -221,6 +221,7 @@ export const DEFAULT_SETTINGS: Settings = {
   rate: 1,
   pitch: 1,
   showLabels: true,
+  requireEditCheck: true,
 }
 
 export const DATA_VERSION = 1

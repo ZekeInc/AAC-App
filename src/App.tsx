@@ -1,14 +1,7 @@
-import {
-  useCallback,
-  useEffect,
-  useReducer,
-  useRef,
-  useState,
-  type CSSProperties,
-  type ReactNode,
-} from 'react'
+import { useCallback, useEffect, useReducer, useState, type CSSProperties } from 'react'
 import { CellButton } from './components/CellButton'
 import { CellEditor } from './components/CellEditor'
+import { EditLock } from './components/EditLock'
 import { MessageBar } from './components/MessageBar'
 import { SettingsPanel } from './components/SettingsPanel'
 import { loadData, saveData } from './lib/storage'
@@ -17,56 +10,13 @@ import { currentBoard, initState, messageText, reducer } from './state/appState'
 import type { Cell } from './types'
 import './App.css'
 
-const HOLD_TO_EDIT_MS = 1000
-
 type EditorTarget = { mode: 'edit'; cell: Cell } | { mode: 'add' } | null
-
-/**
- * A button that only fires after being held down, so a user tapping around
- * the screen can't accidentally enter edit mode.
- */
-function HoldButton({ onHold, children }: { onHold: () => void; children: ReactNode }) {
-  const timer = useRef<number | undefined>(undefined)
-  const [holding, setHolding] = useState(false)
-  const cancel = () => {
-    window.clearTimeout(timer.current)
-    setHolding(false)
-  }
-  useEffect(() => cancel, [])
-  return (
-    <button
-      type="button"
-      className={`nav-btn hold${holding ? ' is-holding' : ''}`}
-      style={{ '--hold-ms': `${HOLD_TO_EDIT_MS}ms` } as CSSProperties}
-      onPointerDown={() => {
-        setHolding(true)
-        timer.current = window.setTimeout(() => {
-          setHolding(false)
-          onHold()
-        }, HOLD_TO_EDIT_MS)
-      }}
-      onPointerUp={cancel}
-      onPointerLeave={cancel}
-      onPointerCancel={cancel}
-      onKeyDown={(e) => {
-        // Keyboard and switch users can't "hold": Enter/Space activates directly.
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault()
-          onHold()
-        }
-      }}
-      onContextMenu={(e) => e.preventDefault()}
-      title="Press and hold to edit"
-    >
-      {children}
-    </button>
-  )
-}
 
 export default function App() {
   const [state, dispatch] = useReducer(reducer, undefined, () => initState(loadData()))
   const [editor, setEditor] = useState<EditorTarget>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [lockOpen, setLockOpen] = useState(false)
   const { data, message, editing, boardStack } = state
   const { settings } = data
   const board = currentBoard(state)
@@ -87,6 +37,8 @@ export default function App() {
     },
     [editing, settings],
   )
+
+  const startEditing = () => dispatch({ type: 'setEditing', editing: true })
 
   const speakMessage = () => speak(messageText(message), settings)
 
@@ -131,9 +83,15 @@ export default function App() {
             </button>
           </>
         ) : (
-          <HoldButton onHold={() => dispatch({ type: 'setEditing', editing: true })}>
+          <button
+            type="button"
+            className="nav-btn"
+            onClick={() =>
+              settings.requireEditCheck ? setLockOpen(true) : startEditing()
+            }
+          >
             <span aria-hidden="true">✎</span> Edit
-          </HoldButton>
+          </button>
         )}
       </nav>
 
@@ -172,7 +130,7 @@ export default function App() {
         )}
         {!editing && board.cells.length === 0 && (
           <p className="empty-board">
-            This board is empty. Press and hold <strong>Edit</strong> to add buttons.
+            This board is empty. Tap <strong>Edit</strong> to add buttons.
           </p>
         )}
       </main>
@@ -202,6 +160,16 @@ export default function App() {
                   dispatch({ type: 'moveCell', boardId: board.id, cellId: editor.cell.id, offset })
               : undefined
           }
+        />
+      )}
+
+      {lockOpen && (
+        <EditLock
+          onClose={() => setLockOpen(false)}
+          onUnlock={() => {
+            setLockOpen(false)
+            startEditing()
+          }}
         />
       )}
 
