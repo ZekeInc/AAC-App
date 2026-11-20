@@ -101,7 +101,10 @@ export function useListener() {
             setState('waiting')
 
             const startedAt = performance.now()
-            let noiseDb = Infinity
+            // Background level = the quietest moment in the last 1.5 s. A steady
+            // fan or hum is learned within moments, so it never counts as speech.
+            const recent: number[] = []
+            const WINDOW = Math.round(1500 / TICK_MS)
             let speechStart = 0
             let lastLoud = 0
             interval = window.setInterval(() => {
@@ -111,8 +114,9 @@ export function useListener() {
               const db = 10 * Math.log10(sum / buf.length + 1e-10)
               const now = performance.now()
               // Track the background level: quickly downward, slowly upward.
-              // Start no higher than a typical room so speech right away still counts.
-              noiseDb = noiseDb === Infinity ? Math.min(db, -50) : db < noiseDb ? db : noiseDb + 0.05
+              recent.push(db)
+              if (recent.length > WINDOW) recent.shift()
+              const noiseDb = Math.min(...recent)
               setLevel(Math.min(1, Math.max(0, (db + 60) / 50)))
 
               const loud = db > Math.max(noiseDb + 12, -50)

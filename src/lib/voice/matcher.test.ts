@@ -65,6 +65,50 @@ describe('feature extraction', () => {
     expect(end).toBeLessThanOrEqual(80)
   })
 
+  it('leaves out the tap on Stop and the silence before it', () => {
+    // word (40 frames) · 1 s quiet · 3-frame click
+    const energy = [
+      ...Array(30).fill(-70),
+      ...Array(40).fill(-20),
+      ...Array(100).fill(-70),
+      ...Array(3).fill(-15),
+      ...Array(15).fill(-70),
+    ]
+    const [start, end] = speechBounds(energy)!
+    expect(end).toBeLessThanOrEqual(80)
+    expect(start).toBeGreaterThanOrEqual(20)
+  })
+
+  it('keeps the syllables of a word that has short pauses inside it', () => {
+    // "ba-na-na" with two 120 ms dips
+    const energy = [
+      ...Array(30).fill(-70),
+      ...Array(15).fill(-20),
+      ...Array(12).fill(-60),
+      ...Array(15).fill(-22),
+      ...Array(12).fill(-60),
+      ...Array(15).fill(-24),
+      ...Array(30).fill(-70),
+    ]
+    const [start, end] = speechBounds(energy)!
+    expect(start).toBeLessThanOrEqual(30)
+    expect(end).toBeGreaterThanOrEqual(99)
+  })
+
+  it('matches the same word recorded with and without a loud fan', () => {
+    let seed = 7
+    const fan = (x: Float32Array) =>
+      x.map((v) => {
+        seed = (seed * 16807) % 2147483647
+        return v + 0.04 * ((seed / 2147483647) * 2 - 1)
+      })
+    const t = templates()
+    for (const [name, tones] of Object.entries(VOCAB)) {
+      const ranked = rankCandidates(extractFeatures(fan(word(tones, { seed: 5 })))!, t)
+      expect(ranked[0].cellId).toBe(name)
+    }
+  })
+
   it('produces normalized 24-dimensional frames', () => {
     const f = extractFeatures(word(VOCAB.yes))!
     expect(f.length).toBeGreaterThan(20)

@@ -85,13 +85,19 @@ function fft(re: Float32Array, im: Float32Array) {
   }
 }
 
-/** Raw MFCCs (including c0) for every frame, and each frame's energy in dB. */
+/**
+ * Raw MFCCs (including c0) for every frame, and each frame's energy in dB.
+ *
+ * Steady background noise (a fan, air conditioner, fridge hum) is removed
+ * first: its spectrum is measured from the quietest frames of the recording
+ * and subtracted from every frame ("spectral subtraction"), with a floor so
+ * the remaining quiet looks the same whatever the room.
+ */
 export function mfcc(samples: Float32Array): { ceps: Float32Array[]; energyDb: number[] } {
-  const ceps: Float32Array[] = []
+  const mel: Float32Array[] = []
   const energyDb: number[] = []
   const re = new Float32Array(NFFT)
   const im = new Float32Array(NFFT)
-  const logMel = new Float32Array(MEL_BANDS)
   for (let start = 0; start + FRAME <= samples.length; start += HOP) {
     re.fill(0)
     im.fill(0)
@@ -105,11 +111,29 @@ export function mfcc(samples: Float32Array): { ceps: Float32Array[]; energyDb: n
     }
     energyDb.push(10 * Math.log10(energy / FRAME + 1e-10))
     fft(re, im)
-    for (let m = 0; m < MEL_BANDS; m++) {
-      const f = melFilters[m]
+    const m = new Float32Array(MEL_BANDS)
+    for (let b = 0; b < MEL_BANDS; b++) {
+      const f = melFilters[b]
       let sum = 0
       for (let k = 0; k <= NFFT / 2; k++) if (f[k]) sum += f[k] * (re[k] ** 2 + im[k] ** 2)
-      logMel[m] = Math.log(sum + 1e-10)
+      m[b] = sum
+    }
+    mel.push(m)
+  }
+
+  // Noise spectrum: average of the quietest 20% of frames.
+  const noise = new Float32Array(MEL_BANDS)
+  if (mel.length) {
+    const cutoff = [...energyDb].sort((a, b) => a - b)[Math.floor(energyDb.length * 0.2)]
+    const quiet = mel.filter((_, i) => energyDb[i] <= cutoff)
+    for (const m of quiet) for (let b = 0; b < MEL_BANDS; b++) noise[b] += m[b] / quiet.length
+  }
+
+  const ceps = mel.map((m) => {
+    const logMel = new Float32Array(MEL_BANDS)
+    for (let b = 0; b < MEL_BANDS; b++) {
+      const clean = Math.max(m[b] - noise[b], 0.1 * noise[b])
+      logMel[b] = Math.log(clean + 1e-10)
     }
     const c = new Float32Array(CEPS)
     for (let i = 0; i < CEPS; i++) {
@@ -117,14 +141,22 @@ export function mfcc(samples: Float32Array): { ceps: Float32Array[]; energyDb: n
       for (let j = 0; j < MEL_BANDS; j++) sum += dct[i][j] * logMel[j]
       c[i] = sum
     }
-    ceps.push(c)
-  }
+    return c
+  })
   return { ceps, energyDb }
 }
 
+const MERGE_GAP = 20 // frames (200 ms): gaps inside a word, e.g. before a "t"
+const JOIN_GAP = 30 // frames (300 ms): nearby parts of a longer word or phrase
+const MIN_PART = 5 // frames (50 ms): shorter bursts are clicks or bumps
+
 /**
- * The [start, end) frame range containing speech, found from frame energy
- * relative to the recording's own background noise and loudest point.
+ * The [start, end) frame range containing the spoken word.
+ *
+ * Loud frames are grouped into parts; the part with the most sound is the
+ * word, and other substantial parts close to it are included. Short or
+ * distant noises (the tap on Stop, a bump, a cough well before the word)
+ * are left out, along with the silence around them.
  */
 export function speechBounds(energyDb: number[]): [number, number] | null {
   if (energyDb.length === 0) return null
@@ -133,10 +165,38 @@ export function speechBounds(energyDb: number[]): [number, number] | null {
   const peak = sorted[sorted.length - 1]
   // Too quiet overall, or no real difference between speech and background.
   if (peak < -55 || peak - noise < 10) return null
-  const threshold = Math.max(noise + 0.3 * (peak - noise), peak - 35)
-  let start = energyDb.findIndex((e) => e >= threshold)
-  let end = energyDb.length - 1
-  while (end > start && energyDb[end] < threshold) end--
+  const threshold = Math.max(noise + 0.35 * (peak - noise), peak - 35)
+
+  // Group loud frames into parts, bridging short gaps.
+  const parts: { start: number; end: number; score: number }[] = []
+  for (let i = 0; i < energyDb.length; i++) {
+    if (energyDb[i] < threshold) continue
+    const last = parts[parts.length - 1]
+    if (last && i - last.end <= MERGE_GAP) last.end = i + 1
+    else parts.push({ start: i, end: i + 1, score: 0 })
+  }
+  for (const p of parts) {
+    for (let i = p.start; i < p.end; i++) p.score += Math.max(0, energyDb[i] - threshold)
+  }
+  const real = parts.filter((p) => p.end - p.start >= MIN_PART)
+  if (real.length === 0) return null
+
+  const best = real.reduce((a, b) => (b.score > a.score ? b : a))
+  let start = best.start
+  let end = best.end
+  // Add neighbouring parts that are close and carry real sound.
+  for (let changed = true; changed; ) {
+    changed = false
+    for (const p of real) {
+      if (p.start >= start && p.end <= end) continue
+      const close = p.end <= start ? start - p.end <= JOIN_GAP : p.start - end <= JOIN_GAP
+      if (close && p.score >= 0.15 * best.score) {
+        start = Math.min(start, p.start)
+        end = Math.max(end, p.end)
+        changed = true
+      }
+    }
+  }
   // Keep a little context so soft word edges aren't cut off.
   start = Math.max(0, start - 5)
   end = Math.min(energyDb.length, end + 6)
