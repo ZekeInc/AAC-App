@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { copyText } from '../lib/clipboard'
-import { messageText, type MessageWord } from '../state/appState'
+import { messageDisplayText, type MessageWord } from '../state/appState'
 import { CellSymbol } from './CellButton'
 
 interface Props {
@@ -29,7 +29,7 @@ export function MessageBar({ message, onSpeak, onBackspace, onClear }: Props) {
   }, [copied])
 
   const copy = async () => {
-    const ok = await copyText(messageText(message))
+    const ok = await copyText(messageDisplayText(message))
     setCopied({ status: ok ? 'copied' : 'failed', for: message })
   }
   return (

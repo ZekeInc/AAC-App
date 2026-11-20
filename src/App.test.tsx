@@ -61,12 +61,22 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: /Add button/ }))
     const dialog = screen.getByRole('dialog', { name: 'Add button' })
     await user.type(within(dialog).getByLabelText('Label'), 'giraffe')
+    await user.type(within(dialog).getByLabelText(/Spoken text/), 'a tall giraffe')
     await user.type(within(dialog).getByLabelText(/Symbol/), '🦒')
     await user.click(within(dialog).getByRole('button', { name: 'Save' }))
     await user.click(screen.getByRole('button', { name: 'Done' }))
 
+    await user.click(screen.getByRole('button', { name: 'I' }))
     await user.click(screen.getByRole('button', { name: 'giraffe' }))
     expect(within(messageBar()).getByText('giraffe')).toBeInTheDocument()
+
+    // Speak uses the spoken text; Copy uses the labels shown on screen.
+    const speak = vi.mocked(window.speechSynthesis.speak)
+    speak.mockClear()
+    await user.click(screen.getByRole('button', { name: /Speak$/ }))
+    expect((speak.mock.calls[0][0] as SpeechSynthesisUtterance).text).toBe('I a tall giraffe')
+    await user.click(screen.getByRole('button', { name: 'Copy message as text' }))
+    expect(await navigator.clipboard.readText()).toBe('I giraffe')
     // Edits persist across reloads.
     expect(localStorage.getItem('aac-app:data')).toContain('giraffe')
   })

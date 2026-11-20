@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { createDefaultData } from '../data/defaultBoards'
 import type { Cell } from '../types'
-import { currentBoard, initState, messageText, reducer } from './appState'
+import {
+  currentBoard,
+  initState,
+  messageDisplayText,
+  messageText,
+  reducer,
+} from './appState'
 
 const word = (label: string, extra: Partial<Cell> = {}): Cell => ({
   id: label,
@@ -17,6 +23,8 @@ describe('appState reducer', () => {
     s = reducer(s, { type: 'selectWord', cell: word('want') })
     s = reducer(s, { type: 'selectWord', cell: word('🍕', { vocalization: 'pizza' }) })
     expect(messageText(s.message)).toBe('I want pizza')
+    // Copying uses the labels shown on screen, not the spoken text.
+    expect(messageDisplayText(s.message)).toBe('I want 🍕')
     s = reducer(s, { type: 'deleteLastWord' })
     expect(messageText(s.message)).toBe('I want')
     s = reducer(s, { type: 'clearMessage' })

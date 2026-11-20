@@ -130,6 +130,11 @@ export function reducer(state: AppState, action: Action): AppState {
   }
 }
 
+/** The text shown on the buttons, used when copying a message. */
+export function messageDisplayText(message: MessageWord[]): string {
+  return message.map((w) => w.cell.label).join(' ')
+}
+
 /** The text to speak for a message. */
 export function messageText(message: MessageWord[]): string {
   return message.map((w) => w.cell.vocalization ?? w.cell.label).join(' ')
