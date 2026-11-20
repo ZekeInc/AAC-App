@@ -1,0 +1,91 @@
+:root {
+  --bg: #f4f5f7;
+  --surface: #ffffff;
+  --text: #1b1f24;
+  --muted: #5d6673;
+  --border: #d5d9e0;
+  --accent: #2563eb;
+  --accent-text: #ffffff;
+  --danger: #c62828;
+  --focus: #f59e0b;
+
+  /* Modified Fitzgerald Key */
+  --cat-pronoun: #fff3b0;
+  --cat-verb: #c8f0c4;
+  --cat-descriptor: #c7defc;
+  --cat-noun: #ffd8b0;
+  --cat-social: #fbd0e6;
+  --cat-question: #e2d3fa;
+  --cat-negation: #ffc9c9;
+  --cat-misc: #ffffff;
+  --cat-folder: #e3e6eb;
+  --cell-text: #1b1f24;
+
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.4;
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #12151a;
+    --surface: #1d2229;
+    --text: #eef1f5;
+    --muted: #a3acb9;
+    --border: #39414c;
+    --accent: #3b82f6;
+    --cat-misc: #f3f4f6;
+    --cat-folder: #c9ced6;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  overscroll-behavior: none;
+  /* AAC users often tap rapidly; avoid double-tap zoom and text selection. */
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+button,
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+input,
+select {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
