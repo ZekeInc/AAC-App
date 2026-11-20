@@ -222,6 +222,8 @@ export const DEFAULT_SETTINGS: Settings = {
   pitch: 1,
   showLabels: true,
   requireEditCheck: true,
+  voiceMatching: true,
+  matchSensitivity: 0.5,
 }
 
 export const DATA_VERSION = 1

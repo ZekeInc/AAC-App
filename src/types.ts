@@ -46,6 +46,10 @@ export interface Settings {
   showLabels: boolean
   /** Ask a simple grown-up question before entering edit mode. */
   requireEditCheck: boolean
+  /** Show the Listen button for matching speech to buttons' recordings. */
+  voiceMatching: boolean
+  /** 0 = strict, 1 = lenient. */
+  matchSensitivity: number
 }
 
 export interface AppData {

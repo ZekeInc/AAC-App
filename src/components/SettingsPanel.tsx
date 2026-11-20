@@ -14,6 +14,14 @@ interface Props {
   onClose: () => void
 }
 
+function sensitivityLabel(s: number) {
+  if (s <= 0.2) return 'Strict'
+  if (s < 0.4) return 'Fairly strict'
+  if (s <= 0.6) return 'Balanced'
+  if (s < 0.8) return 'Fairly lenient'
+  return 'Lenient'
+}
+
 export function SettingsPanel({ data, onChange, onReplaceData, onClose }: Props) {
   const { settings } = data
   const voices = useVoices()
@@ -144,6 +152,36 @@ export function SettingsPanel({ data, onChange, onReplaceData, onClose }: Props)
             🔊 Test voice
           </button>
         </div>
+
+        <h3>Voice matching</h3>
+        <p className="hint">
+          Say a word and the app picks the button whose voice recordings match. Record your
+          voice on buttons in the button editor. Matching happens only on this device.
+        </p>
+        <label className="check">
+          <input
+            type="checkbox"
+            checked={settings.voiceMatching}
+            onChange={(e) => onChange({ voiceMatching: e.target.checked })}
+          />
+          Show the Listen button
+        </label>
+        <label>
+          Matching: <strong>{sensitivityLabel(settings.matchSensitivity)}</strong>
+          <input
+            type="range"
+            min={0}
+            max={1}
+            step={0.1}
+            value={settings.matchSensitivity}
+            onChange={(e) => onChange({ matchSensitivity: Number(e.target.value) })}
+            aria-describedby="sensitivity-hint"
+          />
+          <small id="sensitivity-hint">
+            Stricter asks “Did you mean…?” more often; more lenient picks a button more readily
+            but makes more mistakes.
+          </small>
+        </label>
 
         <h3>Backup</h3>
         <p className="hint">

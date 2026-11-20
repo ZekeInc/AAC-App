@@ -26,6 +26,12 @@ works fully offline once installed.
   saying a button's word, in the button editor. They are stored only on the
   device (IndexedDB), included in backups, and are for upcoming voice matching:
   they are never played by Speak or by tapping a button.
+- **Voice matching** — tap **🎤 Listen** and say a word; the app compares it
+  with the buttons' recordings (on every board) and selects the matching
+  button, just like tapping it. If it isn't sure it asks "Did you mean…?" with
+  the closest buttons. Runs entirely on the device: MFCC speech features with
+  dynamic time warping, matched against the user's own voice, so it adapts to
+  each person's speech. Strictness is adjustable in Settings.
 - **Edit lock** — tapping Edit asks a quick grown-up question (a simple sum)
   so users can't change boards by accident. It can be turned off in Settings.
 - **Backup** — export/import all boards as a JSON file; everything is saved on
@@ -83,13 +89,16 @@ src/
   lib/storage.ts          localStorage persistence, import/export
   lib/audioClips.ts       voice recordings in IndexedDB, backup encoding
   lib/useRecorder.ts      microphone recording (MediaRecorder)
+  lib/voice/              voice matching: features (MFCC), matcher (DTW +
+                          decision thresholds), listener (end-of-speech
+                          detection), feature cache for saved recordings
   types.ts                Board / Cell / Settings types
 ```
 
 ## Roadmap ideas
 
 - Picture-symbol library (e.g. ARASAAC / Mulberry symbols) instead of emoji
-- Voice matching: say a word and select the button whose recordings match
+- Learn from "Did you mean…?" choices to improve voice matching over time
 - Word prediction and grammar helpers (plurals, verb tenses)
 - Keyboard page for spelling
 - Switch scanning and dwell selection for motor access

@@ -1,9 +1,17 @@
-import { useCallback, useEffect, useReducer, useState, type CSSProperties } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useReducer,
+  useState,
+  type CSSProperties,
+} from 'react'
 import { CellButton } from './components/CellButton'
 import { CellEditor } from './components/CellEditor'
 import { EditLock } from './components/EditLock'
 import { MessageBar } from './components/MessageBar'
 import { SettingsPanel } from './components/SettingsPanel'
+import { VoicePanel } from './components/VoicePanel'
 import {
   countClipsByCell,
   deleteClipsForCell,
@@ -13,6 +21,7 @@ import {
 } from './lib/audioClips'
 import { loadData, saveData } from './lib/storage'
 import { speak } from './lib/speech'
+import { loadTemplates } from './lib/voice/templates'
 import { currentBoard, initState, messageText, reducer } from './state/appState'
 import type { AppData, Cell } from './types'
 import './App.css'
@@ -24,6 +33,8 @@ export default function App() {
   const [editor, setEditor] = useState<EditorTarget>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [lockOpen, setLockOpen] = useState(false)
+  const [voiceOpen, setVoiceOpen] = useState(false)
+  const [heard, setHeard] = useState<string | null>(null)
   const { data, message, editing, boardStack } = state
   const { settings } = data
   const board = currentBoard(state)
@@ -41,6 +52,25 @@ export default function App() {
       })
   }, [])
   useEffect(refreshClipCounts, [refreshClipCounts])
+
+  const cellsById = useMemo(
+    () => new Map(Object.values(data.boards).flatMap((b) => b.cells.map((c) => [c.id, c]))),
+    [data.boards],
+  )
+
+  // Prepare the recordings for matching in the background so Listen is quick.
+  useEffect(() => {
+    if (clipCounts.size === 0) return
+    loadTemplates(new Set(cellsById.keys())).catch(() => {})
+  }, [clipCounts, cellsById])
+
+  useEffect(() => {
+    if (!heard) return
+    const t = window.setTimeout(() => setHeard(null), 2500)
+    return () => window.clearTimeout(t)
+  }, [heard])
+
+  const canListen = settings.voiceMatching && !editing && clipCounts.size > 0
 
   const replaceData = async (next: AppData, clips: AudioClip[] | null) => {
     dispatch({ type: 'replaceData', data: next })
@@ -100,6 +130,11 @@ export default function App() {
           <span aria-hidden="true">🏠</span> Home
         </button>
         <h1 className="board-title">{board.name}</h1>
+        {canListen && (
+          <button type="button" className="nav-btn listen" onClick={() => setVoiceOpen(true)}>
+            <span aria-hidden="true">🎤</span> Listen
+          </button>
+        )}
         {editing ? (
           <>
             <button type="button" className="nav-btn" onClick={() => setSettingsOpen(true)}>
@@ -206,6 +241,30 @@ export default function App() {
             startEditing()
           }}
         />
+      )}
+
+      {voiceOpen && (
+        <VoicePanel
+          cellsById={cellsById}
+          sensitivity={settings.matchSensitivity}
+          onClose={() => setVoiceOpen(false)}
+          onSelect={(cell, confident) => {
+            setVoiceOpen(false)
+            if (confident) setHeard(cell.label)
+            if (cell.linkTo) {
+              dispatch({ type: 'openBoard', boardId: cell.linkTo })
+            } else {
+              if (settings.speakOnTap) speak(cell.vocalization ?? cell.label, settings)
+              dispatch({ type: 'selectWord', cell })
+            }
+          }}
+        />
+      )}
+
+      {heard && (
+        <div className="toast" role="status">
+          Heard “{heard}”
+        </div>
       )}
 
       {settingsOpen && (
