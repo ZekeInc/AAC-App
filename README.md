@@ -51,6 +51,20 @@ To try it on a tablet, run `npm run dev -- --host` and open the printed network
 URL on the device (on the same Wi-Fi). Installing as an app and offline mode
 need the production build served over HTTPS.
 
+## Live app & installing
+
+The app is deployed to GitHub Pages by `.github/workflows/deploy-pages.yml`
+on every push: **https://zekeinc.github.io/AAC-App/**
+
+To install it, open that link and:
+
+- **iPad / iPhone (Safari):** Share button → **Add to Home Screen**.
+- **Android (Chrome):** menu ⋮ → **Install app** (or **Add to Home screen**).
+- **Desktop (Chrome / Edge):** click the install icon in the address bar.
+
+After the first visit it works offline. Updates download automatically the
+next time it is opened with an internet connection.
+
 ## Project structure
 
 ```
