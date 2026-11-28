@@ -227,6 +227,7 @@ export const DEFAULT_SETTINGS: Settings = {
   learnFromChoices: true,
   showMatchDetails: false,
   multiWord: true,
+  showHomeAddButton: true,
 }
 
 export const DATA_VERSION = 1

@@ -22,7 +22,7 @@ works fully offline once installed.
   purple, negation red).
 - **Add button** tile at the end of the Home board (the same one shown in
   edit mode), for adding a button without entering edit mode; it asks the math
-  question first when the edit lock is on.
+  question first when the edit lock is on. It can be hidden in Settings → Layout.
 - **Customizable boards** — add, edit, reorder, and delete buttons; use an
   emoji or your own photo; link a button to another board or create a new one.
 - **Voice recordings** — record up to 3 short clips (5 s each) of the user

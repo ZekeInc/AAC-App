@@ -93,6 +93,14 @@ export function SettingsPanel({ data, onChange, onReplaceData, onClose }: Props)
         <label className="check">
           <input
             type="checkbox"
+            checked={settings.showHomeAddButton}
+            onChange={(e) => onChange({ showHomeAddButton: e.target.checked })}
+          />
+          Show the Add button on the Home board
+        </label>
+        <label className="check">
+          <input
+            type="checkbox"
             checked={settings.returnHomeAfterSelect}
             onChange={(e) => onChange({ returnHomeAfterSelect: e.target.checked })}
           />

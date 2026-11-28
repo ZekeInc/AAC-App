@@ -201,9 +201,10 @@ export default function App() {
             onActivate={activate}
           />
         ))}
-        {/* The same Add button in edit mode (any board) and on Home outside edit
-            mode, where the math question is asked first if it's turned on. */}
-        {(editing || board.id === data.homeBoardId) && (
+        {/* The same Add button in edit mode (any board) and, if enabled in
+            Settings, on Home outside edit mode, where the math question is
+            asked first if it's turned on. */}
+        {(editing || (board.id === data.homeBoardId && settings.showHomeAddButton)) && (
           <button
             type="button"
             className="cell cell-add"
@@ -219,7 +220,9 @@ export default function App() {
             <span className="cell-label">Add button</span>
           </button>
         )}
-        {!editing && board.cells.length === 0 && board.id !== data.homeBoardId && (
+        {!editing &&
+          board.cells.length === 0 &&
+          !(board.id === data.homeBoardId && settings.showHomeAddButton) && (
           <p className="empty-board">
             This board is empty. Tap <strong>Edit</strong> to add buttons.
           </p>

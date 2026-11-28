@@ -56,6 +56,8 @@ export interface Settings {
   showMatchDetails: boolean
   /** Recognize several words said in a row ("banana bread"). */
   multiWord: boolean
+  /** Show the Add button at the end of the Home board outside edit mode. */
+  showHomeAddButton: boolean
 }
 
 export interface AppData {
