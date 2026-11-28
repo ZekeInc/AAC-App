@@ -91,7 +91,7 @@ describe('App', () => {
     expect(screen.getByRole('button', { name: 'Done' })).toBeInTheDocument()
   })
 
-  describe('Add new button on the Home board', () => {
+  describe('Add button on the Home board', () => {
     const answer = async (user: ReturnType<typeof userEvent.setup>, correct: boolean) => {
       const lock = screen.getByRole('dialog', { name: 'Grown-up check' })
       const [a, b] = within(lock).getByText(/\d+ \+ \d+ = \?/).textContent!.match(/\d+/g)!.map(Number)
@@ -104,7 +104,7 @@ describe('App', () => {
     it('asks the math question first, then adds the button to Home without entering edit mode', async () => {
       const user = userEvent.setup()
       render(<App />)
-      await user.click(screen.getByRole('button', { name: 'Add new button' }))
+      await user.click(screen.getByRole('button', { name: 'Add button' }))
       await answer(user, false)
       expect(screen.queryByRole('dialog', { name: 'Add button' })).not.toBeInTheDocument()
       await answer(user, true)
@@ -114,11 +114,11 @@ describe('App', () => {
       await user.type(within(dialog).getByLabelText(/Symbol/), '🥞')
       await user.click(within(dialog).getByRole('button', { name: 'Save' }))
 
-      // Added at the end of Home, just before the Add new button tile; still in normal mode.
+      // Added at the end of Home, just before the Add button tile; still in normal mode.
       const grid = screen.getByRole('main', { name: 'Home board' })
       const buttons = within(grid).getAllByRole('button')
       expect(buttons.at(-2)).toHaveAccessibleName('pancakes')
-      expect(buttons.at(-1)).toHaveAccessibleName('Add new button')
+      expect(buttons.at(-1)).toHaveAccessibleName('Add button')
       expect(screen.queryByRole('button', { name: 'Done' })).not.toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: 'pancakes' }))
       expect(within(messageBar()).getByText('pancakes')).toBeInTheDocument()
@@ -130,21 +130,25 @@ describe('App', () => {
       localStorage.setItem('aac-app:data', JSON.stringify(data))
       const user = userEvent.setup()
       render(<App />)
-      await user.click(screen.getByRole('button', { name: 'Add new button' }))
+      await user.click(screen.getByRole('button', { name: 'Add button' }))
       expect(screen.queryByRole('dialog', { name: 'Grown-up check' })).not.toBeInTheDocument()
       expect(screen.getByRole('dialog', { name: 'Add button' })).toBeInTheDocument()
     })
 
-    it('only appears on the Home board, outside edit mode', async () => {
+    it('is the same single Add button as in edit mode, and only on Home outside edit mode', async () => {
       const user = userEvent.setup()
       render(<App />)
+      expect(screen.getAllByRole('button', { name: 'Add button' })).toHaveLength(1)
       await user.click(screen.getByRole('button', { name: 'Open Food' }))
-      expect(screen.queryByRole('button', { name: 'Add new button' })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Add button' })).not.toBeInTheDocument()
       await user.click(screen.getByRole('button', { name: /Home/ }))
       await user.click(screen.getByRole('button', { name: 'Edit' }))
       await answer(user, true)
-      expect(screen.queryByRole('button', { name: 'Add new button' })).not.toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /Add button/ })).toBeInTheDocument()
+      // In edit mode it's the one tile, and it opens the editor without another question.
+      expect(screen.getAllByRole('button', { name: 'Add button' })).toHaveLength(1)
+      await user.click(screen.getByRole('button', { name: 'Add button' }))
+      expect(screen.queryByRole('dialog', { name: 'Grown-up check' })).not.toBeInTheDocument()
+      expect(screen.getByRole('dialog', { name: 'Add button' })).toBeInTheDocument()
     })
   })
 })

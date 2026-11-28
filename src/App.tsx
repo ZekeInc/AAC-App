@@ -201,26 +201,22 @@ export default function App() {
             onActivate={activate}
           />
         ))}
-        {editing && (
-          <button type="button" className="cell cell-add" onClick={() => setEditor({ mode: 'add' })}>
-            <span className="cell-symbol" aria-hidden="true">
-              ＋
-            </span>
-            <span className="cell-label">Add button</span>
-          </button>
-        )}
-        {!editing && board.id === data.homeBoardId && (
+        {/* The same Add button in edit mode (any board) and on Home outside edit
+            mode, where the math question is asked first if it's turned on. */}
+        {(editing || board.id === data.homeBoardId) && (
           <button
             type="button"
             className="cell cell-add"
             onClick={() =>
-              settings.requireEditCheck ? setLockFor('add') : setEditor({ mode: 'add' })
+              !editing && settings.requireEditCheck
+                ? setLockFor('add')
+                : setEditor({ mode: 'add' })
             }
           >
             <span className="cell-symbol" aria-hidden="true">
               ＋
             </span>
-            <span className="cell-label">Add new button</span>
+            <span className="cell-label">Add button</span>
           </button>
         )}
         {!editing && board.cells.length === 0 && board.id !== data.homeBoardId && (
