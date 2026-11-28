@@ -31,7 +31,7 @@ export function EditLock({ onUnlock, onClose }: Props) {
     <Modal title="Grown-up check" onClose={onClose}>
       <div className="form">
         <p className="lock-question">
-          To edit the boards, tap the answer: <strong>{q.a} + {q.b} = ?</strong>
+          To make changes, tap the answer: <strong>{q.a} + {q.b} = ?</strong>
         </p>
         <div className="lock-choices">
           {q.choices.map((n) => (

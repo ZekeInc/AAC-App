@@ -33,7 +33,8 @@ export default function App() {
   const [state, dispatch] = useReducer(reducer, undefined, () => initState(loadData()))
   const [editor, setEditor] = useState<EditorTarget>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [lockOpen, setLockOpen] = useState(false)
+  /** The math question is showing, and what to do once it's answered. */
+  const [lockFor, setLockFor] = useState<'edit' | 'add' | null>(null)
   const [voiceOpen, setVoiceOpen] = useState(false)
   const [heard, setHeard] = useState<string | null>(null)
   const { data, message, editing, boardStack } = state
@@ -165,7 +166,7 @@ export default function App() {
             type="button"
             className="nav-btn"
             onClick={() =>
-              settings.requireEditCheck ? setLockOpen(true) : startEditing()
+              settings.requireEditCheck ? setLockFor('edit') : startEditing()
             }
           >
             <span aria-hidden="true">✎</span>
@@ -208,7 +209,21 @@ export default function App() {
             <span className="cell-label">Add button</span>
           </button>
         )}
-        {!editing && board.cells.length === 0 && (
+        {!editing && board.id === data.homeBoardId && (
+          <button
+            type="button"
+            className="cell cell-add"
+            onClick={() =>
+              settings.requireEditCheck ? setLockFor('add') : setEditor({ mode: 'add' })
+            }
+          >
+            <span className="cell-symbol" aria-hidden="true">
+              ＋
+            </span>
+            <span className="cell-label">Add new button</span>
+          </button>
+        )}
+        {!editing && board.cells.length === 0 && board.id !== data.homeBoardId && (
           <p className="empty-board">
             This board is empty. Tap <strong>Edit</strong> to add buttons.
           </p>
@@ -246,12 +261,13 @@ export default function App() {
         />
       )}
 
-      {lockOpen && (
+      {lockFor && (
         <EditLock
-          onClose={() => setLockOpen(false)}
+          onClose={() => setLockFor(null)}
           onUnlock={() => {
-            setLockOpen(false)
-            startEditing()
+            setLockFor(null)
+            if (lockFor === 'add') setEditor({ mode: 'add' })
+            else startEditing()
           }}
         />
       )}

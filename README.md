@@ -20,6 +20,9 @@ works fully offline once installed.
 - **Fitzgerald Key colors** so word types are easy to find (people yellow,
   actions green, describing blue, things orange, social pink, questions
   purple, negation red).
+- **Add new button** tile at the end of the Home board, for adding a button
+  without entering edit mode (asks the math question first when the edit lock
+  is on).
 - **Customizable boards** — add, edit, reorder, and delete buttons; use an
   emoji or your own photo; link a button to another board or create a new one.
 - **Voice recordings** — record up to 3 short clips (5 s each) of the user
